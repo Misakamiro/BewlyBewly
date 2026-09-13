@@ -383,4 +383,4 @@ extension.zip bytes : 16,124,901
 extension.zip SHA256: 38FF5F807A1461B2B87AF24CD5F93FE0F347E8BEB309523041549D5AA5EE47C2
 ```
 
-仍未做:真实浏览器冒烟(Edge/Firefox 实机加载),见第 11 节遗留——这是当前唯一未闭环的事项。
+Edge 实机冒烟已于 2026-09-14 由用户完成并确认正常(首页推荐出卡片、滚动加载、右键后台打开等运行时路径),0.41.2 以来改动的 Chromium 侧路径至此有真实浏览器验证。Firefox 实测未做:用户不使用 Firefox,已接受;Firefox 头处理路径仅有构建级验证。
