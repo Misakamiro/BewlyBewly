@@ -7,6 +7,7 @@ import {
   getFirefoxContainerCookies,
   isTrustedMessageSender,
   rewriteBilibiliRequestHeaders,
+  shouldRewriteBilibiliRequestHeaders,
 } from '~/background/utils'
 import { isTrustedWebPageOrigin } from '~/utils/trust'
 
@@ -27,6 +28,7 @@ describe('background message trust boundary', () => {
     expect(isTrustedMessageSender(undefined)).toBe(true)
     expect(isTrustedMessageSender(senderWith('chrome-extension://abcdef/options/index.html'))).toBe(true)
     expect(isTrustedMessageSender(senderWith('moz-extension://uuid-1234/dist/popup/index.html'))).toBe(true)
+    expect(isTrustedMessageSender(senderWith('safari-web-extension://uuid-5678/options/index.html'))).toBe(true)
   })
 
   it('accepts senders from hosts the content scripts are declared on', () => {
@@ -57,6 +59,26 @@ describe('firefox container cookie collection', () => {
 })
 
 describe('webrequest header rewriting', () => {
+  const containerCookieHeader = { name: 'firefox-multi-account-cookie', value: 'SESSDATA=abc' }
+
+  it('rewrites whenever the container cookie header is present', () => {
+    expect(shouldRewriteBilibiliRequestHeaders([containerCookieHeader], undefined)).toBe(true)
+    expect(shouldRewriteBilibiliRequestHeaders([containerCookieHeader], 'https://www.bilibili.com/')).toBe(true)
+  })
+
+  it('rewrites document-bound requests without the cookie header', () => {
+    expect(shouldRewriteBilibiliRequestHeaders([{ name: 'Accept', value: '*/*' }], 'https://space.bilibili.com/1')).toBe(true)
+  })
+
+  it('skips document-less requests without the cookie header', () => {
+    expect(shouldRewriteBilibiliRequestHeaders([{ name: 'Accept', value: '*/*' }], undefined)).toBe(false)
+  })
+
+  it('never rewrites when request headers are missing', () => {
+    expect(shouldRewriteBilibiliRequestHeaders(undefined, 'https://www.bilibili.com/')).toBe(false)
+    expect(shouldRewriteBilibiliRequestHeaders(undefined, undefined)).toBe(false)
+  })
+
   it('converts the container cookie header to cookie and keeps the raw header off the wire', () => {
     const out = rewriteBilibiliRequestHeaders(
       [

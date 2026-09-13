@@ -4,7 +4,7 @@
 项目目录：`C:\Users\misakamiro\Documents\ChatGPT\哔哩哔哩插件`
 维护分支：`codex/maintenance-v0.41.1`
 源码基线：官方归档 `v0.41.1`，提交 `1e2f5f10a299bd53a1f9200004af07764e5946c7`
-> **2026-09-13 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成一次全面审计与安全加固，当前维护版本为 **0.41.3**，历史与加固改动均已提交到本分支。**以最后一节为准。**
+> **2026-09-13 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成一次全面审计与安全加固，当前维护版本为 **0.41.5**，历史与加固改动均已提交到本分支。**以最后一节为准。**
 
 ## 1. 当前结论
 
@@ -366,3 +366,21 @@ bundle 检查          : 两个 bundle 中 webext-bridge 与 onConnect 均 0 命
 - **Edge 实机浏览器回归停留在 v0.41.2（见第 4 节）**；0.41.3/0.41.4 均为静态/单测/构建级验证。0.41.4 改动了消息注册与 Firefox 头处理两条运行时路径，交付前务必做一次真实浏览器冒烟（Firefox 构建尤其需要）。
 - Iconify 运行时第三方请求、access_key GET 传参、Firefox 对 B 站页面请求的 Origin/Referer 改写语义（现收敛到 B 站域内）等上游遗留仍在。
 - git 提交身份仍为占位 `misakamiro <misakamiro@local>`。
+
+## 12. 2026-09-14 第三轮审查收尾修复（v0.41.5）
+
+第三轮全量审查确认 v0.41.4 全部修复有效、无可达回归后,把仅剩的两个 P3 理论项修掉:
+
+- `src/background/index.ts` webRequest 监听器 fail-closed:documentUrl 畸形导致解析异常时不再放弃改写(改为按扩展自身请求处理,凭证头仍被转换剥离);`details.requestHeaders` 缺失时直接放弃改写,杜绝返回空数组清空全部请求头的理论边角。
+- 门控逻辑提取为纯函数 `shouldRewriteBilibiliRequestHeaders`(`src/background/utils.ts`),4 个用例锁定(凭证头必改写、带文档改写、无文档跳过、requestHeaders 缺失跳过)。
+- `isTrustedMessageSender` 白名单加入 `safari-web-extension:`(消除 Safari 构建未来启用扩展页面时的休眠回归)。
+
+验证(2026-09-14):vitest 19/19、typecheck、lint、build、build-firefox、pack:zip 全绿。
+
+```text
+manifest version    : 0.41.5
+extension.zip bytes : 16,124,901
+extension.zip SHA256: 38FF5F807A1461B2B87AF24CD5F93FE0F347E8BEB309523041549D5AA5EE47C2
+```
+
+仍未做:真实浏览器冒烟(Edge/Firefox 实机加载),见第 11 节遗留——这是当前唯一未闭环的事项。

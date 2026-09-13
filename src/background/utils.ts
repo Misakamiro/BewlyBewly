@@ -78,6 +78,22 @@ export interface WebRequestHeader {
   value?: string
 }
 
+// 判定一条 webRequest 是否需要改写头:
+// - 携带 firefox-multi-account-cookie 的请求一律处理(凭证头不能未经转换上网)
+// - 其余带关联文档的请求处理 Origin/Referer
+// - 顶级导航等无文档且无凭证头的请求不动;
+//   requestHeaders 缺失时放弃改写(返回空数组会清掉全部请求头)
+export function shouldRewriteBilibiliRequestHeaders(
+  requestHeaders: WebRequestHeader[] | undefined,
+  documentUrl: string | undefined,
+): boolean {
+  if (!requestHeaders)
+    return false
+  if (requestHeaders.some(header => header.name === 'firefox-multi-account-cookie'))
+    return true
+  return Boolean(documentUrl)
+}
+
 // Firefox webRequest 头处理:
 // - firefox-multi-account-cookie 只转换为 Cookie 头,自定义头本身不能留在网络上
 // - Origin/Referer 统一改写为调用方给定的 headerOrigin
@@ -115,7 +131,7 @@ export function isTrustedMessageSender(sender?: Browser.Runtime.MessageSender): 
   if (!sender)
     return true
   const url = sender.url ?? ''
-  if (/^(?:chrome-extension|moz-extension|about):/.test(url))
+  if (/^(?:chrome-extension|moz-extension|safari-web-extension|about):/.test(url))
     return true
   if (!url.startsWith('https://'))
     return false
