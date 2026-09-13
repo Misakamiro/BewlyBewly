@@ -3,16 +3,16 @@ import { AHS } from '../../utils'
 
 const API_VIDEO = {
   getRecommendVideos: {
-    url: 'https://api.bilibili.com/x/web-interface/index/top/feed/rcmd',
+    url: 'https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd',
     _fetch: {
       method: 'get',
     },
     params: {
-      fresh_idx: 0,
-      feed_version: 'V2',
       fresh_type: 4,
+      feed_version: 'V8',
+      homepage_ver: 1,
       ps: 30,
-      plat: 1,
+      fresh_idx: 1,
     },
     afterHandle: AHS.J_D,
   },

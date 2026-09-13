@@ -12,6 +12,7 @@ import { Type as ThreePointV2Type } from '~/models/video/appForYou'
 import type { forYouResult, Item as VideoItem } from '~/models/video/forYou'
 import api from '~/utils/api'
 import { TVAppKey } from '~/utils/authProvider'
+import { isUsableWebRecommendationItem, type UsableWebRecommendationItem } from '~/utils/recommendation'
 import { isVerticalVideo } from '~/utils/uriParse'
 
 const props = defineProps<{
@@ -37,7 +38,7 @@ const appFilterFunc = useFilter(
 // https://github.com/starknt/BewlyBewly/blob/fad999c2e482095dc3840bb291af53d15ff44130/src/contentScripts/views/Home/components/ForYou.vue#L16
 interface VideoElement {
   uniqueId: string
-  item?: VideoItem
+  item?: UsableWebRecommendationItem
 }
 
 interface AppVideoElement {
@@ -66,6 +67,7 @@ const videoCardRef = ref(null)
 const showDislikeDialog = ref<boolean>(false)
 const selectedDislikeReason = ref<number>(1)
 const PAGE_SIZE = 30
+let requestGeneration = 0
 
 onKeyStroke((e: KeyboardEvent) => {
   if (showDislikeDialog.value) {
@@ -113,26 +115,32 @@ onActivated(() => {
 })
 
 async function initData() {
+  requestGeneration++
+  refreshIdx.value = 1
+  noMoreContent.value = false
+  needToLoginFirst.value = false
   videoList.value.length = 0
   appVideoList.value.length = 0
-  await getData()
+  await getData(requestGeneration)
 }
 
-async function getData() {
+async function getData(generation = requestGeneration) {
   emit('beforeLoading')
   isLoading.value = true
   try {
     if (settings.value.recommendationMode === 'web') {
-      await getRecommendVideos()
+      await getRecommendVideos(generation)
     }
     else {
       for (let i = 0; i < 3; i++)
-        await getAppRecommendVideos()
+        await getAppRecommendVideos(generation)
     }
   }
   finally {
-    isLoading.value = false
-    emit('afterLoading')
+    if (generation === requestGeneration) {
+      isLoading.value = false
+      emit('afterLoading')
+    }
   }
 }
 
@@ -143,18 +151,20 @@ function initPageAction() {
     if (noMoreContent.value)
       return
 
-    getData()
+    getData().catch(console.error)
   }
 
   handlePageRefresh.value = async () => {
     if (isLoading.value)
       return
 
-    initData()
+    initData().catch(console.error)
   }
 }
 
-async function getRecommendVideos() {
+async function getRecommendVideos(generation = requestGeneration): Promise<void> {
+  if (generation !== requestGeneration)
+    return
   try {
     let i = 0
     if (!filterFunc.value || (videoList.value.length < PAGE_SIZE && filterFunc.value)) {
@@ -167,23 +177,38 @@ async function getRecommendVideos() {
       videoList.value.push(...pendingVideos)
     }
 
-    const response: forYouResult = await api.video.getRecommendVideos({
-      fresh_idx: refreshIdx.value++,
+    const currentRefreshIdx = refreshIdx.value
+    const response: forYouResult | undefined = await api.video.getRecommendVideos({
+      fresh_idx: currentRefreshIdx,
       ps: PAGE_SIZE,
     })
 
-    if (!response.data) {
+    if (generation !== requestGeneration)
+      return
+
+    if (!response) {
       noMoreContent.value = true
       return
     }
 
     if (response.code === 0) {
-      const resData = [] as VideoItem[]
+      if (!response.data || !Array.isArray(response.data.item)) {
+        noMoreContent.value = true
+        return
+      }
+      refreshIdx.value++
+      const resData = [] as UsableWebRecommendationItem[]
 
       response.data.item.forEach((item: VideoItem) => {
+        if (!isUsableWebRecommendationItem(item))
+          return
+
         if (!filterFunc.value || filterFunc.value(item))
           resData.push(item)
       })
+      if (!resData.length) {
+        noMoreContent.value = true
+      }
 
       // when videoList has length property, it means it is the first time to load
       if (!videoList.value.length) {
@@ -220,21 +245,34 @@ async function getRecommendVideos() {
     else if (response.code === 62011) {
       needToLoginFirst.value = true
     }
+    else {
+      console.error('Failed to load web recommendations:', response.code, response.message)
+      noMoreContent.value = true
+    }
+  }
+  catch (error) {
+    if (generation === requestGeneration) {
+      console.error('Failed to request web recommendations:', error)
+      noMoreContent.value = true
+    }
   }
   finally {
-    const filledItems = videoList.value.filter(video => video.item)
-    videoList.value = filledItems
+    if (generation === requestGeneration) {
+      const filledItems = videoList.value.filter(video => video.item)
+      videoList.value = filledItems
 
-    if (!needToLoginFirst.value) {
-      await nextTick()
-      if (!await haveScrollbar() || filledItems.length < PAGE_SIZE || filledItems.length < 1) {
-        getRecommendVideos()
+      if (!needToLoginFirst.value && !noMoreContent.value) {
+        await nextTick()
+        if (!await haveScrollbar() || filledItems.length < PAGE_SIZE || filledItems.length < 1)
+          await getRecommendVideos(generation)
       }
     }
   }
 }
 
-async function getAppRecommendVideos() {
+async function getAppRecommendVideos(generation = requestGeneration): Promise<void> {
+  if (generation !== requestGeneration)
+    return
   try {
     let i = 0
     if (!appFilterFunc.value || (appVideoList.value.length < PAGE_SIZE && appFilterFunc.value)) {
@@ -247,7 +285,7 @@ async function getAppRecommendVideos() {
       appVideoList.value.push(...pendingVideos)
     }
 
-    const response: AppForYouResult = await api.video.getAppRecommendVideos({
+    const response: AppForYouResult | undefined = await api.video.getAppRecommendVideos({
       access_key: accessKey.value,
       s_locale: settings.value.language === LanguageType.Mandarin_TW || settings.value.language === LanguageType.Cantonese ? 'zh-Hant_TW' : 'zh-Hans_CN',
       c_locate: settings.value.language === LanguageType.Mandarin_TW || settings.value.language === LanguageType.Cantonese ? 'zh-Hant_TW' : 'zh-Hans_CN',
@@ -255,7 +293,19 @@ async function getAppRecommendVideos() {
       idx: appVideoList.value.length > 0 ? appVideoList.value[appVideoList.value.length - 1].item?.idx : 1,
     })
 
+    if (generation !== requestGeneration)
+      return
+
+    if (!response) {
+      noMoreContent.value = true
+      return
+    }
+
     if (response.code === 0) {
+      if (!response.data || !Array.isArray(response.data.items)) {
+        noMoreContent.value = true
+        return
+      }
       const resData = [] as AppVideoItem[]
 
       response.data.items.forEach((item: AppVideoItem) => {
@@ -295,19 +345,34 @@ async function getAppRecommendVideos() {
           }
         })
       }
+
+      if (!resData.length) {
+        noMoreContent.value = true
+      }
     }
     else if (response.code === 62011) {
       needToLoginFirst.value = true
     }
+    else {
+      console.error('Failed to load app recommendations:', response.code, response.message)
+      noMoreContent.value = true
+    }
+  }
+  catch (error) {
+    if (generation === requestGeneration) {
+      console.error('Failed to request app recommendations:', error)
+      noMoreContent.value = true
+    }
   }
   finally {
-    const filledItems = appVideoList.value.filter(video => video.item)
-    appVideoList.value = filledItems
+    if (generation === requestGeneration) {
+      const filledItems = appVideoList.value.filter(video => video.item)
+      appVideoList.value = filledItems
 
-    if (!needToLoginFirst.value) {
-      await nextTick()
-      if (!await haveScrollbar() || filledItems.length < PAGE_SIZE || filledItems.length < 1) {
-        getAppRecommendVideos()
+      if (!needToLoginFirst.value && !noMoreContent.value) {
+        await nextTick()
+        if (!await haveScrollbar() || filledItems.length < PAGE_SIZE || filledItems.length < 1)
+          await getAppRecommendVideos(generation)
       }
     }
   }

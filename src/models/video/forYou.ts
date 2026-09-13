@@ -29,17 +29,17 @@ export interface Item {
   title: string
   duration: number
   pubdate: number
-  owner: Owner
-  stat: Stat
-  av_feature: null
+  owner: Owner | null
+  stat: Stat | null
+  av_feature: null | unknown
   is_followed: number
-  rcmd_reason: RcmdReason
+  rcmd_reason: RcmdReason | null
   show_info: number
   track_id: string
   pos: number
-  room_info: null
-  ogv_info: null
-  business_info: null
+  room_info: null | unknown
+  ogv_info: null | unknown
+  business_info: null | unknown
   is_stock: number
   enable_vt: number
   vt_display: string
@@ -47,6 +47,7 @@ export interface Item {
 
 export enum Goto {
   AV = 'av',
+  AD = 'ad',
 }
 
 export interface Owner {

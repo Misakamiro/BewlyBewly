@@ -57,6 +57,20 @@ export type APIType = API | APIFunction
 interface APIMAP {
   [key: string]: APIType
 }
+
+export function serializeParams(params: Record<string, any>): string {
+  const urlParams = new URLSearchParams()
+  for (const key in params) {
+    const value = params[key]
+    if (value !== undefined && value !== null)
+      urlParams.append(key, String(value))
+  }
+  return urlParams.toString()
+}
+
+export function cloneHeaders(headers?: Record<string, any>): Record<string, any> {
+  return { ...(headers ?? {}) }
+}
 // 工厂函数API_LISTENER_FACTORY
 function apiListenerFactory(API_MAP: APIMAP) {
   return async (message: Message, sender?: Browser.Runtime.MessageSender, sendResponse?: Function) => {
@@ -86,7 +100,8 @@ function doRequest(message: Message, api: API, sendResponse?: Function, cookies?
     rest = rest || {}
 
     let { _fetch, url, params = {}, afterHandle } = api
-    const { method, headers = {}, body } = _fetch as _FETCH
+    const { method, body } = _fetch as _FETCH
+    const headers = cloneHeaders((_fetch as _FETCH).headers)
     const isGET = method.toLocaleLowerCase() === 'get'
     // merge params and body
     const targetParams = Object.assign({}, params)
@@ -100,10 +115,7 @@ function doRequest(message: Message, api: API, sendResponse?: Function, cookies?
 
     // generate params
     if (Object.keys(targetParams).length) {
-      const urlParams = new URLSearchParams()
-      for (const key in targetParams)
-        targetParams[key] && urlParams.append(key, targetParams[key])
-      url += `?${urlParams.toString()}`
+      url += `?${serializeParams(targetParams)}`
     }
     // generate body
     if (!isGET) {
