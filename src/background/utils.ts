@@ -71,9 +71,44 @@ export function serializeParams(params: Record<string, any>): string {
 export function cloneHeaders(headers?: Record<string, any>): Record<string, any> {
   return { ...(headers ?? {}) }
 }
+
+// Firefox 多账户容器:只收集 B 站域的 Cookie,
+// 避免把容器里其他站点的凭据一起发给 B 站
+export const FIREFOX_CONTAINER_COOKIE_DOMAIN = 'bilibili.com'
+
+export function getFirefoxContainerCookies(storeId: string) {
+  return browser.cookies.getAll({ storeId, domain: FIREFOX_CONTAINER_COOKIE_DOMAIN })
+}
+
+// 内容脚本注入的站点 + 扩展自身页面之外,一律拒绝驱动后台 API 代理
+const TRUSTED_MESSAGE_HOST_SUFFIXES = ['.bilibili.com', '.hdslb.com']
+
+export function isTrustedMessageSender(sender?: Browser.Runtime.MessageSender): boolean {
+  if (!sender)
+    return true
+  const url = sender.url ?? ''
+  if (/^(?:chrome-extension|moz-extension|about):/.test(url))
+    return true
+  if (!url.startsWith('https://'))
+    return false
+  try {
+    const { hostname } = new URL(url)
+    return hostname === 'bilibili.com'
+      || hostname === 'hdslb.com'
+      || TRUSTED_MESSAGE_HOST_SUFFIXES.some(suffix => hostname.endsWith(suffix))
+  }
+  catch {
+    return false
+  }
+}
+
 // 工厂函数API_LISTENER_FACTORY
 function apiListenerFactory(API_MAP: APIMAP) {
   return async (message: Message, sender?: Browser.Runtime.MessageSender, sendResponse?: Function) => {
+    if (!isTrustedMessageSender(sender)) {
+      console.error(`Rejected message from untrusted sender: ${sender?.url ?? 'unknown'}`)
+      return
+    }
     const contentScriptQuery = message.contentScriptQuery
     // 检测是否有contentScriptQuery
     if (!contentScriptQuery || !API_MAP[contentScriptQuery])
@@ -85,7 +120,7 @@ function apiListenerFactory(API_MAP: APIMAP) {
 
     // eslint-disable-next-line node/prefer-global/process
     if (process.env.FIREFOX && sender && sender.tab && sender.tab.cookieStoreId) {
-      const cookies = await browser.cookies.getAll({ storeId: sender.tab.cookieStoreId })
+      const cookies = await getFirefoxContainerCookies(sender.tab.cookieStoreId)
       return doRequest(message, api, sendResponse, cookies)
     }
 

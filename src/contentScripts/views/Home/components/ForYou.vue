@@ -68,6 +68,9 @@ const showDislikeDialog = ref<boolean>(false)
 const selectedDislikeReason = ref<number>(1)
 const PAGE_SIZE = 30
 let requestGeneration = 0
+// 过滤器连续滤空整页的兜底次数,避免个别过滤条件直接掐死整条推荐流
+const MAX_CONSECUTIVE_FILTERED_EMPTY_PAGES = 3
+let consecutiveFilteredEmptyPages = 0
 
 onKeyStroke((e: KeyboardEvent) => {
   if (showDislikeDialog.value) {
@@ -119,6 +122,7 @@ async function initData() {
   refreshIdx.value = 1
   noMoreContent.value = false
   needToLoginFirst.value = false
+  consecutiveFilteredEmptyPages = 0
   videoList.value.length = 0
   appVideoList.value.length = 0
   await getData(requestGeneration)
@@ -206,8 +210,18 @@ async function getRecommendVideos(generation = requestGeneration): Promise<void>
         if (!filterFunc.value || filterFunc.value(item))
           resData.push(item)
       })
-      if (!resData.length) {
+      if (!response.data.item.length) {
+        // 接口本身已经没有更多内容
         noMoreContent.value = true
+      }
+      else if (!resData.length) {
+        // 整页被过滤器滤空:允许连续若干页,而不是立即终止整条推荐流
+        consecutiveFilteredEmptyPages++
+        if (consecutiveFilteredEmptyPages >= MAX_CONSECUTIVE_FILTERED_EMPTY_PAGES)
+          noMoreContent.value = true
+      }
+      else {
+        consecutiveFilteredEmptyPages = 0
       }
 
       // when videoList has length property, it means it is the first time to load
@@ -346,8 +360,18 @@ async function getAppRecommendVideos(generation = requestGeneration): Promise<vo
         })
       }
 
-      if (!resData.length) {
+      if (!response.data.items.length) {
+        // 接口本身已经没有更多内容
         noMoreContent.value = true
+      }
+      else if (!resData.length) {
+        // 整页被过滤器滤空:允许连续若干页,而不是立即终止整条推荐流
+        consecutiveFilteredEmptyPages++
+        if (consecutiveFilteredEmptyPages >= MAX_CONSECUTIVE_FILTERED_EMPTY_PAGES)
+          noMoreContent.value = true
+      }
+      else {
+        consecutiveFilteredEmptyPages = 0
       }
     }
     else if (response.code === 62011) {

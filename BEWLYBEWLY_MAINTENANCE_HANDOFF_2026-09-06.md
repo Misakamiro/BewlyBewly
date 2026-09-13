@@ -4,6 +4,7 @@
 项目目录：`C:\Users\misakamiro\Documents\ChatGPT\哔哩哔哩插件`
 维护分支：`codex/maintenance-v0.41.1`
 源码基线：官方归档 `v0.41.1`，提交 `1e2f5f10a299bd53a1f9200004af07764e5946c7`
+> **2026-09-13 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成一次全面审计与安全加固，当前维护版本为 **0.41.3**，历史与加固改动均已提交到本分支。**以第 10 节为准。**
 
 ## 1. 当前结论
 
@@ -39,6 +40,15 @@
 
 - 允许 `owner`、`stat`、`rcmd_reason` 和新版扩展字段为空或变化。
 - 增加 `Goto.AD`。
+
+### 背景页请求工具
+
+文件：`src/background/utils.ts`
+
+- 新增 `serializeParams`：修复 `0`/`false`/`''` 等假值参数被丢弃的问题。
+- 新增 `cloneHeaders`：防止逐请求写入 Cookie 时污染 API 定义中共享的 headers 对象。
+
+（此小节为 2026-09-13 补记，原清单遗漏了该文件。）
 
 ### 测试与构建链
 
@@ -235,3 +245,72 @@ M  src/models/video/forYou.ts
 - 需要真实页面回归：`playwright` 或 `browse`。
 - 修改推荐或接口行为：`test-driven-development`，先补失败测试再改实现。
 - 准备交付前：`verification-before-completion`。
+
+## 10. 2026-09-13 全面审计与安全加固（接手维护者执行）
+
+### 结论
+
+当前维护版本 **BewlyBewly `0.41.3`**。v0.41.2 的交接改动与本次加固改动均已提交到 `codex/maintenance-v0.41.1`（`2098519e` 为交接改动提交，本节所在提交即加固提交）。仍然禁止 `git reset --hard`、`git clean`、批量 restore；不要覆盖 `C:\Users\misakamiro\Downloads\Compressed\extension\`；不要恢复旧 `0.42` 工作树。
+
+### 安全修复
+
+- Firefox 多账户容器 Cookie 收集改为只取 `bilibili.com` 域（`src/background/utils.ts` 的 `FIREFOX_CONTAINER_COOKIE_DOMAIN` / `getFirefoxContainerCookies`），不再把容器内其他站点的 Cookie 发给 B 站；`src/background/index.ts` 把自定义头转换为 `Cookie` 后不再把 `firefox-multi-account-cookie` 留在网络上。原实现为 P1（整罐跨站 Cookie 明文外发，仅 Firefox 构建受影响）。
+- 后台消息监听器（`apiListenerFactory`）新增 `isTrustedMessageSender` 校验：仅接受扩展自身上下文与 bilibili.com/hdslb.com 来源。浏览器本身已阻止普通网页直接调 `runtime.sendMessage`（无 `externally_connectable`、无 `onMessageExternal`），此为纵深防御。
+- `openLinkInBackground` 增加 URL scheme 校验，仅允许 http/https。
+- 新增 `src/tests/backgroundSecurity.spec.ts` 覆盖上述校验。
+
+### 推荐流行为修复
+
+- `ForYou.vue`（web 与 app 两分支）：整页被过滤器滤空时不再立即终止推荐流，改为连续 3 个滤空页才停止（`MAX_CONSECUTIVE_FILTERED_EMPTY_PAGES`）；接口本身返回空列表仍立即终止。
+
+### manifest 收敛
+
+- `web_accessible_resources` 的 matches 从 `<all_urls>` 收敛为内容脚本实际注入的 10 个 bilibili/hdslb 站点（防任意网站探测扩展资源做指纹识别），`src/manifest.ts` 中提取为 `contentScriptMatches` 复用。
+- 移除 `tabs` 权限：全仓库只用过 `tabs.create`（该 API 无需 `tabs` 权限），移除后消除"读取浏览记录"类安装警告。
+
+### 依赖
+
+- `vue-i18n` 9.13.1 → 9.14.5，`dompurify` 3.1.5 → 3.4.15。
+- `package.json` 新增 pnpm overrides 强制传递依赖补丁版本：`nanoid >=3.3.18`、`postcss >=8.5.23`。
+- 结果：`pnpm audit --prod` **0 漏洞**（此前 34 个）。开发依赖仍有约 139 个告警，全部在构建工具链（vite 5 等）中，不随产物发布，暂不处理。
+- 本机 node_modules 曾因 virtual-store 参数不匹配无法 update，已用 `CI=true corepack pnpm install` 按 lockfile 重建，属正常可复现操作。
+
+### 构建链修复
+
+- `scripts/prepare.ts` 不再 shell 出去调用 `pnpm exec esno`（execSync 走 cmd.exe，PATH 上没有 pnpm 时构建必败），改为直接 `import { writeManifest } from './manifest'`；`scripts/manifest.ts` 去掉尾部自执行、变为纯导出模块。构建链现在不依赖 PATH 上存在 npx/pnpm。
+- `.gitignore` 与 `eslint.config.mjs` 增加 `.mimosa`（Mimosa 钩子状态目录，曾被 eslint 误扫出 1200+ 错误）。
+- 本机环境统一用 `corepack pnpm <cmd>`（9.5.0，与 packageManager 一致）代替 `pnpm`；无需再配置第 8 节的 PowerShell PATH。
+
+### 验证记录（2026-09-13）
+
+```text
+pnpm audit --prod    -> No known vulnerabilities found
+pnpm exec vitest run -> 4 个测试文件，11 个测试通过
+pnpm typecheck       -> 通过
+pnpm lint            -> 通过
+pnpm build           -> 通过
+pnpm build-firefox   -> 通过（Firefox 权限保留，验证后已清理 extension-firefox/）
+pnpm pack:zip        -> 通过
+```
+
+生产产物：
+
+```text
+manifest name       : BewlyBewly
+manifest version    : 0.41.3
+manifest_version    : 3
+permissions         : storage, declarativeNetRequest（已移除 tabs）
+WAR matches         : 10 个 bilibili/hdslb 站点
+extension.zip bytes : 16,130,626
+extension.zip SHA256: 5FFCB09153959EBCB8D8CA8C58C814CB2887DF0437100DB2BEF916A281561870
+```
+
+ZIP 解压冒烟通过：manifest 0.41.3，`dist/contentScripts`、`dist/inject`、`dist/background` 三入口与 `assets/rules.json` 齐全，WBI 端点已进入 background bundle。**真实浏览器回归未重做**：本节验证为静态/单测/构建级，Edge 实机加载验证停留在 v0.41.2（第 4 节）；下次交付前建议按第 8 节流程重跑浏览器冒烟。
+
+### 已知遗留
+
+- Iconify 运行时第三方请求：`@iconify/vue` 字符串图标会在 B 站页面运行时拉取 api.iconify.design（未在 manifest 声明），隐私/可用性问题，本次未修。
+- 登录态功能（关注/订阅/通知/收藏夹/历史/稍后再看/扫码登录/APP 推荐授权）仍未用真实会话验证，不要声称已完成。
+- `src/utils/appSign.ts` 曾在审计中被误判为死代码，实际被 `src/utils/authProvider.ts` 的 TV 登录签名使用，**不能删除**。
+- git 提交身份为仓库局部配置 `misakamiro <misakamiro@local>`（占位邮箱），如需正式身份请修改 `git config user.email` 后续提交使用。
+- 顶栏双实现、列表加载逻辑重复、设置水合 `setTimeout(200ms)` 等结构性债务已在审计中记录，未在本次处理。

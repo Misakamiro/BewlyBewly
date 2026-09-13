@@ -33,6 +33,7 @@ export default antfu(
         'extension',
         'extension-firefox',
         '.evidence',
+        '.mimosa',
       ],
     },
   },

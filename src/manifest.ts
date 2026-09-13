@@ -4,6 +4,21 @@ import type { Manifest } from 'webextension-polyfill'
 import type PkgType from '../package.json'
 import { isDev, isFirefox, isSafari, port, r } from '../scripts/utils'
 
+// 内容脚本实际注入的站点;web_accessible_resources 的 matches 也收敛到这一组,
+// 避免任意网站探测扩展资源做指纹识别
+const contentScriptMatches = [
+  '*://www.bilibili.com/*',
+  '*://search.bilibili.com/*',
+  '*://t.bilibili.com/*',
+  '*://space.bilibili.com/*',
+  '*://message.bilibili.com/*',
+  '*://member.bilibili.com/*',
+  '*://account.bilibili.com/*',
+  '*://www.hdslb.com/*',
+  '*://passport.bilibili.com/*',
+  '*://music.bilibili.com/*',
+]
+
 export async function getManifest() {
   const pkg = await fs.readJSON(r('package.json')) as typeof PkgType
 
@@ -38,7 +53,6 @@ export async function getManifest() {
     permissions: [
       'storage',
       'declarativeNetRequest',
-      'tabs',
       ...isFirefox
         ? ['webRequest', 'webRequestBlocking', 'cookies']
         : [],
@@ -49,18 +63,7 @@ export async function getManifest() {
     ],
     content_scripts: [
       {
-        matches: [
-          '*://www.bilibili.com/*',
-          '*://search.bilibili.com/*',
-          '*://t.bilibili.com/*',
-          '*://space.bilibili.com/*',
-          '*://message.bilibili.com/*',
-          '*://member.bilibili.com/*',
-          '*://account.bilibili.com/*',
-          '*://www.hdslb.com/*',
-          '*://passport.bilibili.com/*',
-          '*://music.bilibili.com/*',
-        ],
+        matches: contentScriptMatches,
         js: ['./dist/contentScripts/index.global.js'],
         css: ['./dist/contentScripts/style.css'],
         run_at: 'document_start',
@@ -68,18 +71,7 @@ export async function getManifest() {
         all_frames: true,
       },
       {
-        matches: [
-          '*://www.bilibili.com/*',
-          '*://search.bilibili.com/*',
-          '*://t.bilibili.com/*',
-          '*://space.bilibili.com/*',
-          '*://message.bilibili.com/*',
-          '*://member.bilibili.com/*',
-          '*://account.bilibili.com/*',
-          '*://www.hdslb.com/*',
-          '*://passport.bilibili.com/*',
-          '*://music.bilibili.com/*',
-        ],
+        matches: contentScriptMatches,
         js: ['./dist/inject/index.js'],
         run_at: 'document_start',
         all_frames: true,
@@ -91,8 +83,7 @@ export async function getManifest() {
     web_accessible_resources: [
       {
         resources: ['dist/contentScripts/style.css', 'assets/*'],
-        matches: ['<all_urls>'],
-        // matches: ['./assets/*'],
+        matches: contentScriptMatches,
       },
     ],
     content_security_policy: isFirefox

@@ -11,5 +11,3 @@ export async function writeManifest() {
   ), await getManifest(), { spaces: 2 })
   log('PRE', 'write manifest.json')
 }
-
-writeManifest()
