@@ -4,7 +4,7 @@
 项目目录：`C:\Users\misakamiro\Documents\ChatGPT\哔哩哔哩插件`
 维护分支：`codex/maintenance-v0.41.1`
 源码基线：官方归档 `v0.41.1`，提交 `1e2f5f10a299bd53a1f9200004af07764e5946c7`
-> **2026-09-13 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成一次全面审计与安全加固，当前维护版本为 **0.41.5**，历史与加固改动均已提交到本分支。**以最后一节为准。**
+> **2026-09-13 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成一次全面审计与安全加固，当前维护版本为 **0.41.6**，历史与加固改动均已提交到本分支。**以最后一节为准。**
 
 ## 1. 当前结论
 
@@ -384,3 +384,24 @@ extension.zip SHA256: 38FF5F807A1461B2B87AF24CD5F93FE0F347E8BEB309523041549D5AA5
 ```
 
 Edge 实机冒烟已于 2026-09-14 由用户完成并确认正常(首页推荐出卡片、滚动加载、右键后台打开等运行时路径),0.41.2 以来改动的 Chromium 侧路径至此有真实浏览器验证。Firefox 实测未做:用户不使用 Firefox,已接受;Firefox 头处理路径仅有构建级验证。
+
+## 13. 2026-09-14 第四轮审查遗留 P3 清理(v0.41.6)
+
+第四轮审查报告的 6 项 P3 处理结果:5 项已修,1 项(DNR 三方 POST 改写)确认为上游设计且无干净收窄方式,记录为接受。
+
+- **设置导入校验**(`About.vue`):`JSON.parse` 包 try/catch,非对象/数组拒绝;合并改为 own-property 检查(堵住 `__proto__` 等原型链键);失败时 toast 提示;文件选择监听器改 `{ once: true }`(顺带修复取消对话框后监听器累积、重复导入的既有小毛病)。
+- **useFilter 正则健壮性**:`/.../` 正则关键词编译包 try/catch,非法正则跳过并 `console.warn`,不再让单个坏关键词弄崩整个过滤链。病态正则导致的自身卡顿属于该特性固有语义,记录为接受。
+- **inject 脚本 toString 伪装修复**:`fn.toString = origin[key].toString.bind(origin[key])`,`history.pushState.toString()` 重新返回 `[native code]`。
+- **openIframeDrawer**:`new URL` 全部纳入 try,URL 畸形时退回新标签页打开,点击处理不再崩溃。
+- **移除 popup/options 死入口**:删除 `src/options`、`src/popup` 六个文件与 `storageDemo` 导出;`vite.config.ts` 去掉 `rollupOptions.input`;`vite-mv3-hmr.ts` 移除对应 entry 遍历(dev-only,是移除入口后 dev server 的崩溃点);`scripts/prepare.ts` 去掉 stubIndexHtml;`knip.json` 移除对应 entry;`package.json` 构建链移除 `build:web`(其唯一产出就是这两个死页面;`dev:web` HMR 服务保留)。ZIP 从 53 文件/16,124,901 字节降至 27 文件/16,042,385 字节,已逐项核对仅减少死页面产物。
+- **DNR 一项的接受说明**:规则对第三方 POST 改写 Origin/Referer 属上游设计;B 站写操作均需 body 中的 `bili_jct`(跨站页面不可得),单独改写不构成可利用攻击;DNR 无法精确表达"仅扩展自身请求",强行收窄可能弄坏 Chrome 的 API 调用,故保留原样。
+
+验证(2026-09-14):vitest 19/19、typecheck、lint、knip、build、build-firefox、pack:zip 全绿。
+
+```text
+manifest version    : 0.41.6
+extension.zip bytes : 16,042,385
+extension.zip SHA256: F5801F65AC63D38DE1D06E2018824F2EF0A8B403C2B319CD266B0565CDD1893A
+```
+
+注:本版移除了构建产物中的死页面,建议交付前在 Edge 重载一次确认设置页"导入设置"按钮仍正常(该组件本轮有改动)。

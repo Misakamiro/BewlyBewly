@@ -3,6 +3,17 @@ import { isVerticalVideo } from '~/utils/uriParse'
 
 const get = (obj: any, path: string[]) => path.reduce((acc, part) => acc && acc[part], obj)
 
+// `/.../` 包裹的关键词按正则编译;非法正则跳过并告警,不让单个坏关键词弄崩整个过滤链
+function compileFilterRegExp(keyword: string): RegExp | null {
+  try {
+    return new RegExp(keyword.slice(1, -1), 'i')
+  }
+  catch (error) {
+    console.warn(`Skipped invalid filter regex: ${keyword}`, error)
+    return null
+  }
+}
+
 export enum FilterType {
   filterOutVerticalVideos,
   viewCount,
@@ -65,7 +76,9 @@ export function useFilter(isFollowedKeyPath: string[], filterOpt: FilterType[], 
 
   settings.value.filterByTitle.forEach((item) => {
     if (item.keyword.startsWith('/') && item.keyword.endsWith('/')) {
-      filterByTitleRegExpValues.push(new RegExp(item.keyword.slice(1, -1), 'i'))
+      const regex = compileFilterRegExp(item.keyword)
+      if (regex)
+        filterByTitleRegExpValues.push(regex)
     }
     else {
       filterByTitleStringValues.push(`${item.keyword}`.toUpperCase())
@@ -92,7 +105,9 @@ export function useFilter(isFollowedKeyPath: string[], filterOpt: FilterType[], 
 
   settings.value.filterByUser.forEach((item) => {
     if (item.keyword.startsWith('/') && item.keyword.endsWith('/')) {
-      filterByUserRegExpValues.push(new RegExp(item.keyword.slice(1, -1), 'i'))
+      const regex = compileFilterRegExp(item.keyword)
+      if (regex)
+        filterByUserRegExpValues.push(regex)
     }
     else {
       filterByUserStringValues.push(`${item.keyword}`.toUpperCase())

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { useToast } from 'vue-toastification'
 import browser from 'webextension-polyfill'
 
 import { originalSettings, settings } from '~/logic'
@@ -7,6 +8,7 @@ import { originalSettings, settings } from '~/logic'
 import { version } from '../../../../package.json'
 
 const { t } = useI18n()
+const toast = useToast()
 
 const importSettingsRef = ref<HTMLElement>()
 const hasNewVersion = ref<boolean>(false)
@@ -68,21 +70,29 @@ function handleImportSettings() {
         reader.onload = (event: Event) => {
           const fileReaderTarget = event.target as FileReader
           const fileContent = fileReaderTarget.result as string
-          const jsonObject = JSON.parse(fileContent) as any
 
-          // Merge the new settings with the existing settings
-          Object.keys(jsonObject).forEach((key) => {
-            if (key in settings.value)
-              (settings.value as any)[key] = jsonObject[key]
-          })
+          try {
+            const jsonObject = JSON.parse(fileContent) as Record<string, unknown>
+            if (!jsonObject || typeof jsonObject !== 'object' || Array.isArray(jsonObject))
+              throw new Error('settings file must contain a JSON object')
 
-          importSettingsRef.value?.removeEventListener('change', handleChange)
+            // Merge the new settings with the existing settings
+            Object.keys(jsonObject).forEach((key) => {
+              if (Object.prototype.hasOwnProperty.call(settings.value, key))
+                (settings.value as any)[key] = jsonObject[key]
+            })
+          }
+          catch (error) {
+            console.error('Failed to import settings:', error)
+            toast.error(t('common.operation_failed'))
+          }
         }
         reader.readAsText(selectedFile)
       }
     }
 
-    importSettingsRef.value.addEventListener('change', handleChange)
+    // once: 用户取消文件选择对话框时自动清理,避免监听器累积或重复处理
+    importSettingsRef.value.addEventListener('change', handleChange, { once: true })
   }
 }
 

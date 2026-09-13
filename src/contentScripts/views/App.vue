@@ -254,16 +254,16 @@ function openIframeDrawer(url: string) {
   const isSameOrigin = (origin: URL, destination: URL) =>
     origin.protocol === destination.protocol && origin.host === destination.host && origin.port === destination.port
 
-  const currentUrl = new URL(location.href)
-  const destination = new URL(url)
-
   try {
+    const currentUrl = new URL(location.href)
+    const destination = new URL(url)
     if (!isSameOrigin(currentUrl, destination)) {
       openLinkToNewTab(url)
       return
     }
   }
   catch {
+    // url 畸形时同样退回新标签页打开,不让点击处理崩溃
     openLinkToNewTab(url)
     return
   }

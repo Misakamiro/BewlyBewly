@@ -76,8 +76,6 @@ export function MV3Hmr(): PluginOption {
           await fs.writeFile(targetFile, code)
         }
       }
-
-      Object.keys(server.config.build.rollupOptions.input!).map(entry => writeToDisk(`/${entry}/main.ts`))
     },
   }
 }

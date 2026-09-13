@@ -19,7 +19,8 @@ function injectFunction(
       cb(...args)
       return (originKeysValue[key]).apply(origin, args)
     }
-    fn.toString = (origin)[key].toString
+    // 绑定原生函数,让 toString() 仍返回 [native code] 伪装
+    fn.toString = (origin)[key].toString.bind((origin)[key])
     ;(origin)[key] = fn
   })
 
