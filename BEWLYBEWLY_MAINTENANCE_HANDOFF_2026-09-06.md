@@ -401,7 +401,10 @@ Edge 实机冒烟已于 2026-09-14 由用户完成并确认正常(首页推荐�
 ```text
 manifest version    : 0.41.6
 extension.zip bytes : 16,042,385
-extension.zip SHA256: F5801F65AC63D38DE1D06E2018824F2EF0A8B403C2B319CD266B0565CDD1893A
+extension.zip SHA256: 7F0B907F2D0C4E345A21144899FF9924F5D7FD42804BB7C5776DD6BF903E8808（最终规范打包）
+```
+
+注意：jszip-cli 输出非确定性——同一 extension/ 目录每次重新 pack:zip 会得到不同的 SHA（字节数一致）。核对交付物时以"manifest 版本 + 字节数 + 文件清单"为准，哈希只对当次打包的 zip 本身有效。
 ```
 
 注:本版移除了构建产物中的死页面,建议交付前在 Edge 重载一次确认设置页"导入设置"按钮仍正常(该组件本轮有改动)。
