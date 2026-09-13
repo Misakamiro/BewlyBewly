@@ -11,6 +11,7 @@ import { type DockItem, useMainStore } from '~/stores/mainStore'
 import { useSettingsStore } from '~/stores/settingsStore'
 import { isHomePage, isInIframe, isNotificationPage, isVideoOrBangumiPage, openLinkToNewTab, queryDomUntilFound, scrollToTop } from '~/utils/main'
 import emitter from '~/utils/mitt'
+import { isTrustedWebPageOrigin } from '~/utils/trust'
 
 import { setupNecessarySettingsWatchers } from './necessarySettingsWatchers'
 
@@ -52,8 +53,10 @@ const iframeDrawerURL = ref<string>('')
 const showIframeDrawer = ref<boolean>(false)
 
 const iframePageRef = ref()
-useEventListener(window, 'message', ({ data }) => {
-  switch (data) {
+useEventListener(window, 'message', (event) => {
+  if (!isTrustedWebPageOrigin(event.origin))
+    return
+  switch (event.data) {
     case IFRAME_PAGE_SWITCH_BEWLY:
       {
         const currentDockItemConfig = settingsStore.getDockItemConfigByPage(activatedPage.value)

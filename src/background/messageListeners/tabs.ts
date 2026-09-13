@@ -1,4 +1,7 @@
+import type Browser from 'webextension-polyfill'
 import browser from 'webextension-polyfill'
+
+import { isTrustedMessageSender } from '../utils'
 
 interface Message {
   contentScriptQuery: string
@@ -9,7 +12,7 @@ export enum TABS_MESSAGE {
   OPEN_LINK_IN_BACKGROUND = 'openLinkInBackground',
 }
 
-function isSafeOpenUrl(url: unknown): url is string {
+export function isSafeOpenUrl(url: unknown): url is string {
   if (typeof url !== 'string')
     return false
   try {
@@ -21,7 +24,11 @@ function isSafeOpenUrl(url: unknown): url is string {
   }
 }
 
-function handleMessage(message: Message) {
+function handleMessage(message: Message, sender?: Browser.Runtime.MessageSender) {
+  if (!isTrustedMessageSender(sender)) {
+    console.error(`Rejected openLinkInBackground from untrusted sender: ${sender?.url ?? 'unknown'}`)
+    return
+  }
   if (message.contentScriptQuery === TABS_MESSAGE.OPEN_LINK_IN_BACKGROUND) {
     if (!isSafeOpenUrl(message.url)) {
       console.error(`Rejected unsafe url for openLinkInBackground: ${message.url}`)
@@ -32,11 +39,6 @@ function handleMessage(message: Message) {
 }
 
 export function setupTabMsgLstnrs() {
-  browser.runtime.onMessage.removeListener(handleConnect)
-  browser.runtime.onMessage.addListener(handleConnect)
-}
-
-function handleConnect() {
   browser.runtime.onMessage.removeListener(handleMessage)
   browser.runtime.onMessage.addListener(handleMessage)
 }

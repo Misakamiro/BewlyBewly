@@ -4,6 +4,7 @@ import { onKeyStroke, useEventListener } from '@vueuse/core'
 import { DRAWER_VIDEO_ENTER_PAGE_FULL, DRAWER_VIDEO_EXIT_PAGE_FULL } from '~/constants/globalEvents'
 import { settings } from '~/logic'
 import { isHomePage, isInIframe } from '~/utils/main'
+import { isTrustedWebPageOrigin } from '~/utils/trust'
 
 // TODO: support shortcuts like `Ctrl+Alt+T` to open in new tab, `Esc` to close
 
@@ -155,8 +156,10 @@ watchEffect(() => {
   if (isInIframe())
     return null
 
-  useEventListener(window, 'message', ({ data }) => {
-    switch (data) {
+  useEventListener(window, 'message', (event) => {
+    if (!isTrustedWebPageOrigin(event.origin))
+      return
+    switch (event.data) {
       case DRAWER_VIDEO_ENTER_PAGE_FULL:
         headerShow.value = false
         disableEscPress.value = true

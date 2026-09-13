@@ -4,7 +4,7 @@
 项目目录：`C:\Users\misakamiro\Documents\ChatGPT\哔哩哔哩插件`
 维护分支：`codex/maintenance-v0.41.1`
 源码基线：官方归档 `v0.41.1`，提交 `1e2f5f10a299bd53a1f9200004af07764e5946c7`
-> **2026-09-13 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成一次全面审计与安全加固，当前维护版本为 **0.41.3**，历史与加固改动均已提交到本分支。**以第 10 节为准。**
+> **2026-09-13 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成一次全面审计与安全加固，当前维护版本为 **0.41.3**，历史与加固改动均已提交到本分支。**以最后一节为准。**
 
 ## 1. 当前结论
 
@@ -314,3 +314,55 @@ ZIP 解压冒烟通过：manifest 0.41.3，`dist/contentScripts`、`dist/inject`
 - `src/utils/appSign.ts` 曾在审计中被误判为死代码，实际被 `src/utils/authProvider.ts` 的 TV 登录签名使用，**不能删除**。
 - git 提交身份为仓库局部配置 `misakamiro <misakamiro@local>`（占位邮箱），如需正式身份请修改 `git config user.email` 后续提交使用。
 - 顶栏双实现、列表加载逻辑重复、设置水合 `setTimeout(200ms)` 等结构性债务已在审计中记录，未在本次处理。
+
+## 11. 2026-09-14 第二轮审计与修复（v0.41.4）
+
+第二轮全量审计（门禁重跑 + 安全/架构双重复扫 + 加固 diff 专审）后修复以下问题：
+
+### 消息监听器注册（第二轮 P1-可靠性发现）
+
+- `src/background/messageListeners/api/index.ts` 与 `tabs.ts` 改为在 `setupXxxMsgLstnrs()` 中直接把处理器注册到 `runtime.onMessage`，删除了原先"只有 onConnect 端口连上才安装真正监听器"的偶然注册模式（该模式依赖 webext-bridge 打开的端口：若移除相关 import 会使整个 API 代理静默失效，且后台冷启动后首条消息可能丢失）。
+- 移除 webext-bridge 运行时依赖：`src/logic/common-setup.ts` 删除 `getCurrentContext`（其唯一产物 `$app.context` 全仓库零引用），`shim.d.ts` 删除对应类型增强，`package.json` 移除 `webext-bridge` devDependency。该包此前是"devDependency 却随内容脚本 bundle 发布"，`pnpm audit --prod` 覆盖不到。构建产物已确认 contentScripts/background 两个 bundle 中 `webext-bridge` 与 `onConnect` 均 0 命中。
+
+### Firefox 请求头处理（第二轮 P2 残留）
+
+- `src/background/index.ts` 的 webRequest 监听器不再以 `details.documentUrl` 存在与否为门（原实现下 documentUrl 缺失时自定义头会原样上网），改为：携带 `firefox-multi-account-cookie` 的请求一律处理；无该头且无文档的请求（顶级导航）不动。
+- 过滤器从 `<all_urls>` 收敛为 `*://*.bilibili.com/*` + `*://*.hdslb.com/*`，不再触碰用户其他浏览流量。
+- 头处理逻辑提取为纯函数 `rewriteBilibiliRequestHeaders`（`src/background/utils.ts`）并有单元测试锁定。
+
+### 信任边界补齐（第二轮 P3）
+
+- `tabs.ts` 的 `handleMessage` 补上 `isTrustedMessageSender` 校验（此前仅 API 监听器有）。
+- 新增 `src/utils/trust.ts` 的 `isTrustedWebPageOrigin`，`IframeDrawer.vue` 与 `App.vue` 的 window message 监听补 origin 校验（仅接受 bilibili/hdslb 来源）。
+- `src/background/utils.ts` 显式导入 webextension-polyfill 的 `browser`（后台 bundle 由 tsup 构建、无 AutoImport，原先裸用全局 `browser` 仅在 Firefox 原生全局下成立）。
+
+### 测试
+
+- `backgroundSecurity.spec.ts` 新增 webRequest 头转换、`isSafeOpenUrl`、`isTrustedWebPageOrigin` 三组测试，总计 15 个测试。
+
+### 验证记录（2026-09-14）
+
+```text
+pnpm exec vitest run -> 4 个测试文件，15 个测试通过
+pnpm typecheck       -> 通过
+pnpm lint            -> 通过
+pnpm build           -> 通过
+pnpm build-firefox   -> 通过（验证后已清理 extension-firefox/）
+pnpm pack:zip        -> 通过
+pnpm audit --prod    -> No known vulnerabilities found
+```
+
+生产产物：
+
+```text
+manifest version    : 0.41.4
+extension.zip bytes : 16,124,891
+extension.zip SHA256: 7BA845E5DA205D5F8190ADA5522979543B9BACEED50D70F5F5676FC98013040D
+bundle 检查          : 两个 bundle 中 webext-bridge 与 onConnect 均 0 命中
+```
+
+### 仍然遗留
+
+- **Edge 实机浏览器回归停留在 v0.41.2（见第 4 节）**；0.41.3/0.41.4 均为静态/单测/构建级验证。0.41.4 改动了消息注册与 Firefox 头处理两条运行时路径，交付前务必做一次真实浏览器冒烟（Firefox 构建尤其需要）。
+- Iconify 运行时第三方请求、access_key GET 传参、Firefox 对 B 站页面请求的 Origin/Referer 改写语义（现收敛到 B 站域内）等上游遗留仍在。
+- git 提交身份仍为占位 `misakamiro <misakamiro@local>`。

@@ -2,6 +2,7 @@ import browser from 'webextension-polyfill'
 
 import { setupApiMsgLstnrs } from './messageListeners/api'
 import { setupTabMsgLstnrs } from './messageListeners/tabs'
+import { rewriteBilibiliRequestHeaders } from './utils'
 
 browser.runtime.onInstalled.addListener(async () => {
   // eslint-disable-next-line no-console
@@ -16,28 +17,27 @@ function isExtensionUri(url: string) {
 if (process.env.FIREFOX) {
   browser.webRequest.onBeforeSendHeaders.addListener(
     async (details: any) => {
-      const requestHeaders: browser.WebRequest.HttpHeaders = []
-      if (details.documentUrl) {
-        const url = new URL(details.documentUrl)
-        const extensionUri = isExtensionUri(details.documentUrl)
-        details.requestHeaders = details.requestHeaders || []
-        for (let i = 0; i < details.requestHeaders.length; i++) {
-          const header = details.requestHeaders[i]
-          if (header.name === 'firefox-multi-account-cookie') {
-            // 只转换为 Cookie 头,自定义头本身不能留在网络上
-            requestHeaders.push({ name: 'cookie', value: header.value })
-            continue
-          }
-          if (header.name.toLowerCase() === 'origin' || header.name.toLowerCase() === 'referer')
-            requestHeaders.push({ name: header.name, value: extensionUri ? 'https://www.bilibili.com' : url.origin })
-          else
-            requestHeaders.push(header)
-        }
+      try {
+        const requestHeaders: browser.WebRequest.HttpHeaders = details.requestHeaders || []
+        const hasContainerCookie = requestHeaders.some(header => header.name === 'firefox-multi-account-cookie')
+        // 顶级导航等无关联文档的请求不做改写
+        if (!hasContainerCookie && !details.documentUrl)
+          return
 
-        return { ...details, requestHeaders }
+        // 扩展自身发起的请求(无文档或文档为扩展页)伪装为 www.bilibili.com,
+        // 页面发起的请求保持其文档 origin
+        let headerOrigin = 'https://www.bilibili.com'
+        if (details.documentUrl && !isExtensionUri(details.documentUrl))
+          headerOrigin = new URL(details.documentUrl).origin
+
+        return { ...details, requestHeaders: rewriteBilibiliRequestHeaders(requestHeaders, headerOrigin) }
+      }
+      catch (error) {
+        console.error('Failed to rewrite bilibili request headers:', error)
       }
     },
-    { urls: ['<all_urls>'] },
+    // 只处理 B 站自家请求,不碰用户其他浏览流量
+    { urls: ['*://*.bilibili.com/*', '*://*.hdslb.com/*'] },
     ['blocking', 'requestHeaders'],
   )
 }

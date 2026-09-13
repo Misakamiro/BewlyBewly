@@ -3,6 +3,7 @@
 // 2. json化后返回data
 
 import type Browser from 'webextension-polyfill'
+import browser from 'webextension-polyfill'
 
 type FetchAfterHandler = ((data: Response) => Promise<any>) | ((data: any) => any)
 
@@ -70,6 +71,33 @@ export function serializeParams(params: Record<string, any>): string {
 
 export function cloneHeaders(headers?: Record<string, any>): Record<string, any> {
   return { ...(headers ?? {}) }
+}
+
+export interface WebRequestHeader {
+  name: string
+  value?: string
+}
+
+// Firefox webRequest 头处理:
+// - firefox-multi-account-cookie 只转换为 Cookie 头,自定义头本身不能留在网络上
+// - Origin/Referer 统一改写为调用方给定的 headerOrigin
+//   (扩展自身发起的请求伪装为 www.bilibili.com,页面发起的请求保持其文档 origin)
+export function rewriteBilibiliRequestHeaders(
+  requestHeaders: WebRequestHeader[],
+  headerOrigin: string,
+): WebRequestHeader[] {
+  const rewritten: WebRequestHeader[] = []
+  for (const header of requestHeaders) {
+    if (header.name === 'firefox-multi-account-cookie') {
+      rewritten.push({ name: 'cookie', value: header.value ?? '' })
+      continue
+    }
+    if (header.name.toLowerCase() === 'origin' || header.name.toLowerCase() === 'referer')
+      rewritten.push({ name: header.name, value: headerOrigin })
+    else
+      rewritten.push(header)
+  }
+  return rewritten
 }
 
 // Firefox 多账户容器:只收集 B 站域的 Cookie,

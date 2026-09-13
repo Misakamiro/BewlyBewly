@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import type Browser from 'webextension-polyfill'
 
+import { isSafeOpenUrl } from '~/background/messageListeners/tabs'
 import {
   FIREFOX_CONTAINER_COOKIE_DOMAIN,
   getFirefoxContainerCookies,
   isTrustedMessageSender,
+  rewriteBilibiliRequestHeaders,
 } from '~/background/utils'
+import { isTrustedWebPageOrigin } from '~/utils/trust'
 
 const { getAllMock } = vi.hoisted(() => ({ getAllMock: vi.fn(async () => []) }))
 
@@ -50,5 +53,57 @@ describe('firefox container cookie collection', () => {
       domain: FIREFOX_CONTAINER_COOKIE_DOMAIN,
     })
     expect(FIREFOX_CONTAINER_COOKIE_DOMAIN).toBe('bilibili.com')
+  })
+})
+
+describe('webrequest header rewriting', () => {
+  it('converts the container cookie header to cookie and keeps the raw header off the wire', () => {
+    const out = rewriteBilibiliRequestHeaders(
+      [
+        { name: 'User-Agent', value: 'ua' },
+        { name: 'firefox-multi-account-cookie', value: 'SESSDATA=abc' },
+        { name: 'Origin', value: 'moz-extension://uuid/background.html' },
+      ],
+      'https://www.bilibili.com',
+    )
+
+    expect(out).toEqual([
+      { name: 'User-Agent', value: 'ua' },
+      { name: 'cookie', value: 'SESSDATA=abc' },
+      { name: 'Origin', value: 'https://www.bilibili.com' },
+    ])
+    expect(out.some(header => header.name === 'firefox-multi-account-cookie')).toBe(false)
+  })
+
+  it('rewrites origin/referer while keeping other headers untouched', () => {
+    const out = rewriteBilibiliRequestHeaders(
+      [{ name: 'Referer', value: 'https://www.bilibili.com/video/BV1' }],
+      'https://space.bilibili.com/1',
+    )
+
+    expect(out).toEqual([{ name: 'Referer', value: 'https://space.bilibili.com/1' }])
+  })
+})
+
+describe('isSafeOpenUrl', () => {
+  it('allows http(s) urls only', () => {
+    expect(isSafeOpenUrl('https://www.bilibili.com/video/BV1')).toBe(true)
+    expect(isSafeOpenUrl('http://example.com')).toBe(true)
+    expect(isSafeOpenUrl('javascript:alert(1)')).toBe(false)
+    expect(isSafeOpenUrl('data:text/html,<b>')).toBe(false)
+    expect(isSafeOpenUrl('file:///C:/x')).toBe(false)
+    expect(isSafeOpenUrl(undefined)).toBe(false)
+    expect(isSafeOpenUrl(42)).toBe(false)
+  })
+})
+
+describe('trusted web page origins', () => {
+  it('accepts bilibili/hdslb origins and rejects everything else', () => {
+    expect(isTrustedWebPageOrigin('https://www.bilibili.com')).toBe(true)
+    expect(isTrustedWebPageOrigin('https://player.bilibili.com')).toBe(true)
+    expect(isTrustedWebPageOrigin('https://www.hdslb.com')).toBe(true)
+    expect(isTrustedWebPageOrigin('https://evil.example.com')).toBe(false)
+    expect(isTrustedWebPageOrigin('')).toBe(false)
+    expect(isTrustedWebPageOrigin('not a url')).toBe(false)
   })
 })
