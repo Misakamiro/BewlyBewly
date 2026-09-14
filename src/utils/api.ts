@@ -31,6 +31,8 @@ export class APIClient {
           const api = new Proxy({}, {
             get(_, p) {
               return (options?: object) => {
+                if (!isBackgroundMessagingAvailable())
+                  return Promise.resolve(undefined)
                 return browser.runtime.sendMessage({
                   contentScriptQuery: p,
                   ...options,
@@ -44,6 +46,26 @@ export class APIClient {
       },
     })
   }
+}
+
+let backgroundMessagingDisabled = false
+
+// 扩展被重载/更新后,旧页面的扩展 context 已失效,继续调用 runtime API
+// 只会抛 "Extension context invalidated"。这里统一检测并静默停摆,
+// 刷新页面即可恢复。
+export function isBackgroundMessagingAvailable(): boolean {
+  if (backgroundMessagingDisabled)
+    return false
+  try {
+    if (browser.runtime?.id)
+      return true
+  }
+  catch {
+    // polyfill 在 context 失效后可能直接抛错
+  }
+  backgroundMessagingDisabled = true
+  console.warn('[BewlyBewly] 扩展已重载或更新,本页面的旧实例已停用后台通信;刷新页面即可恢复。')
+  return false
 }
 
 const api = new APIClient()

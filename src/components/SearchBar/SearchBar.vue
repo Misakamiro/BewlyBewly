@@ -235,7 +235,7 @@ async function handleClearSearchHistory() {
         type="text"
         @focus="isFocus = true"
         @input="handleInput"
-        @keydown.enter.stop.passive="handleKeyEnter"
+        @keydown.enter.stop="handleKeyEnter"
         @keyup.up.stop.passive="handleKeyUp"
         @keyup.down.stop.passive="handleKeyDown"
         @keydown.stop="() => {}"

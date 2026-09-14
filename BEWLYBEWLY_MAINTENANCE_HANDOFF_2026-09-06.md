@@ -4,7 +4,7 @@
 项目目录：`C:\Users\misakamiro\Documents\ChatGPT\哔哩哔哩插件`
 维护分支：`codex/maintenance-v0.41.1`
 源码基线：官方归档 `v0.41.1`，提交 `1e2f5f10a299bd53a1f9200004af07764e5946c7`
-> **2026-09-13 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成一次全面审计与安全加固，当前维护版本为 **0.41.6**，历史与加固改动均已提交到本分支。**以最后一节为准。**
+> **2026-09-13 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成一次全面审计与安全加固，当前维护版本为 **0.41.7**，历史与加固改动均已提交到本分支。**以最后一节为准。**
 
 ## 1. 当前结论
 
@@ -408,3 +408,20 @@ extension.zip SHA256: 7F0B907F2D0C4E345A21144899FF9924F5D7FD42804BB7C5776DD6BF90
 ```
 
 注:本版移除了构建产物中的死页面,建议交付前在 Edge 重载一次确认设置页"导入设置"按钮仍正常(该组件本轮有改动)。
+
+## 14. 2026-09-14 重载报错诊断与修复(v0.41.7)
+
+用户在 Edge 重载扩展后看到两类报错,诊断结论:均非 0.41.2 以来任何改动引入,属重载固有现象 + 上游既有问题,本轮顺手加固修复。
+
+- **"Extension context invalidated" ×4**:重载扩展后,重载前打开的 B 站标签页里仍存活旧内容脚本,它们向已被替换的后台发消息就会抛此错——重载未打包扩展的固有现象,非代码 bug。加固:新增 `isBackgroundMessagingAvailable()`(`src/utils/api.ts`),以 `browser.runtime.id` 检测 context 失效,失效后消息通道静默返回 undefined、仅提示一次;`src/utils/tabs.ts` 同样接入。此后重载扩展,旧页面不会再刷此类错误。
+- **"Unable to preventDefault inside passive event listener" ×1**:上游两处既有问题——`HorizontalScrollView.vue` 的 wheel 监听未声明 `{ passive: false }` 就调用 preventDefault;`SearchBar.vue` 的 Enter 处理被误加 `.passive` 修饰(使搜索回车的 preventDefault 实际失效)。两处均已修复。
+
+验证(2026-09-14):vitest 19/19、typecheck、lint、build、build-firefox、pack:zip 全绿。
+
+```text
+manifest version    : 0.41.7
+extension.zip bytes : 16,042,663
+extension.zip SHA256: D5AED82A3FC9BE8AECEE4DA1B73DD4E2084785D9781AEEBB10C022E327FFC771
+```
+
+交付后建议:Edge 重载 0.41.7,点错误面板"全部清除",正常浏览一段后不应再出现上述两类报错;搜索框回车不再产生 passive 告警。

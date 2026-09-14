@@ -13,7 +13,8 @@ watch([() => settings.value.enableHorizontalScrolling, scrollListWrap], ([enable
     return
 
   if (enableHorizontalScrolling)
-    scrollListWrap.addEventListener('wheel', handleMouseScroll)
+    // wheel 监听按 passive 处理时 preventDefault 会被浏览器拒绝,必须显式声明
+    scrollListWrap.addEventListener('wheel', handleMouseScroll, { passive: false })
   else
     scrollListWrap.removeEventListener('wheel', handleMouseScroll)
 })
