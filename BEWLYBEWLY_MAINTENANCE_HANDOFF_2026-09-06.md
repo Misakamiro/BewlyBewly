@@ -4,7 +4,7 @@
 项目目录：`C:\Users\misakamiro\Documents\ChatGPT\哔哩哔哩插件`
 维护分支：`codex/maintenance-v0.41.1`
 源码基线：官方归档 `v0.41.1`，提交 `1e2f5f10a299bd53a1f9200004af07764e5946c7`
-> **2026-09-13 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成一次全面审计与安全加固，当前维护版本为 **0.41.7**，历史与加固改动均已提交到本分支。**以最后一节为准。**
+> **2026-09-14 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成五轮全面审计与四层自动化测试，当前维护版本为 **0.41.7（已验收合格，见第 15 节）**，全部改动均已提交到本分支。**以最后一节为准。**
 
 ## 1. 当前结论
 
@@ -425,3 +425,34 @@ extension.zip SHA256: D5AED82A3FC9BE8AECEE4DA1B73DD4E2084785D9781AEEBB10C022E327
 ```
 
 交付后建议:Edge 重载 0.41.7,点错误面板"全部清除",正常浏览一段后不应再出现上述两类报错;搜索框回车不再产生 passive 告警。
+
+## 15. 2026-09-14 验收审查与自动化测试(验收合格)
+
+按"全面审查 → 全部通过则全面自动化测试 → 双通过即验收合格"的流程执行第五轮审查与四层自动化测试,结论:**验收合格**。
+
+### 审查结果(第五轮,双维度)
+
+- **安全维度:ACCEPT** — v0.41.7 diff 逐项验证正确(守卫不可能误判健康 context;后台 bundle 不经过守卫;模块级 flag 每次页面加载重置;SearchBar 回车无双触发),全库新鲜眼扫描无新 P0-P2。
+- **架构维度:ACCEPT** — 无回归,提交信息与 diff 相符,版本标记一致,遗留债务无恶化。
+- 已知接受项(不阻塞):部分消费端 `.then` 中 `res.code` 未判空(孤儿页面上错误签名从 rejection 变为 TypeError,同一错误类别);文档横幅日期笔误已随手修正。
+
+### 自动化测试结果(四层)
+
+1. **静态套件**:vitest **21/21**(新增 context 失效守卫的"失效锁存"与"健康路径"两个测试)、typecheck、lint、knip、`pnpm audit --prod` 0 漏洞 — 全绿。
+2. **构建矩阵**:Chromium ✓ / Firefox 0.41.7 ✓(Firefox 专属权限完整)/ Safari 0.41.7 ✓;`pack:zip` ✓。
+3. **测试中发现并修复**:Edge 会向加载中的未打包扩展目录写入 `_metadata/generated_indexed_rulesets`(DNR 索引,浏览器运行时产物),曾被打进 zip;`pack:zip` 已加 `-i "_metadata/**"` 排除。zip 恢复 27 文件/16,042,663 字节,SHA256 `6DEBA441583F1326A6584B7688D88EC6D2A9C16244CC07B63BCE01215C9817AB`(以本次打包为准,jszip-cli 非确定性见第 13 节注记)。
+4. **真实浏览器端到端**(playwright + Edge,独立 profile,加载 `extension/`):**9/9 PASS** —
+   - T1 首页 `#bewly` 挂载、opacity 1
+   - T2 版本 0.41.7 匹配
+   - T3 WBI 推荐接口 12/12 全部 HTTP 200 / code 0
+   - T4 推荐卡片 110 个视频链接
+   - T5 滚动分页卡片 110 → 278(验证 ForYou 递归与滤空兜底)
+   - T6 搜索框回车正确跳转 search.bilibili.com(验证 `.passive` 修复)
+   - T7 视频页播放器正常
+   - T8a 无 "Extension context invalidated"
+   - T8b 无扩展归属的控制台错误(唯一 pageerror 为 B 站自家 log-reporter 的 COLS timeout,见第 4 节既有噪声)
+   - 证据:`.evidence/acceptance-2026-09-14T*/`(report.json + 3 张截图),脚本 `.evidence/acceptance-v0417.cjs`
+
+### 验收结论
+
+**BewlyBewly 0.41.7 验收合格**,作为本维护分支的交付基线。

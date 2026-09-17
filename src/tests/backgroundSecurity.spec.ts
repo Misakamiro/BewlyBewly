@@ -9,6 +9,7 @@ import {
   rewriteBilibiliRequestHeaders,
   shouldRewriteBilibiliRequestHeaders,
 } from '~/background/utils'
+import { isBackgroundMessagingAvailable } from '~/utils/api'
 import { isTrustedWebPageOrigin } from '~/utils/trust'
 
 const { getAllMock } = vi.hoisted(() => ({ getAllMock: vi.fn(async () => []) }))
@@ -127,5 +128,14 @@ describe('trusted web page origins', () => {
     expect(isTrustedWebPageOrigin('https://evil.example.com')).toBe(false)
     expect(isTrustedWebPageOrigin('')).toBe(false)
     expect(isTrustedWebPageOrigin('not a url')).toBe(false)
+  })
+})
+
+describe('background messaging availability latch', () => {
+  it('latches off when the extension context is invalidated', () => {
+    // 本文件的 mock 命名空间没有 runtime 导出,访问即抛 -> 视为 context 失效
+    expect(isBackgroundMessagingAvailable()).toBe(false)
+    // 单向锁存:后续调用不再触碰 runtime
+    expect(isBackgroundMessagingAvailable()).toBe(false)
   })
 })
