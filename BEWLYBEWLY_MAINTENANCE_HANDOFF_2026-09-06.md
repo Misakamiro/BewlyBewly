@@ -480,6 +480,8 @@ extension.zip SHA256: D5AED82A3FC9BE8AECEE4DA1B73DD4E2084785D9781AEEBB10C022E327
 - vitest **32/32**(新增 sponsorBlock 纯函数 11 个用例)、typecheck、lint、knip、audit --prod 0 漏洞。
 - 构建矩阵:Chromium / Firefox 0.41.8 / Safari 0.41.8 全过;pack:zip 27 文件无 _metadata。
 - **真实浏览器 e2e(`.evidence/acceptance-sponsor.cjs`,全程静音)**:S0 动态挑选 BSB 有分段且非番剧的普通视频 → S1 经 service worker 预置开关(useStorageLocal 存 JSON 字符串,必须 stringify)→ S2 标记渲染 → S3 seek 进分段后自动跳过到段尾之外 → S4 零扩展控制台错误。证据含进度条特写截图(橙色标记带清晰可见)。
+  - **抽屉生效实证**(`.evidence/acceptance-drawer.cjs`):drawer 模式下点击首页卡片,iframe 内视频页的 `#bewly` 出现 `data-sponsor-state="segments:N"`(composable 在抽屉内完成分段解析)。composable 会把功能状态写到 `#bewly[data-sponsor-state]`(loading/segments:N/none/no-bvid/off),可用于调试与自动化断言。
+  - 注意:首页卡片悬浮预览 iframe(同 /video/ URL、无尾斜杠)也会跑内容脚本,自动化定位抽屉 frame 时按 `data-sponsor-state` + video 元素甄别。
 - 回归:`acceptance-v0417.cjs` 9/9 PASS(0.41.8)。
 
 ### 排障记录(供后人)
