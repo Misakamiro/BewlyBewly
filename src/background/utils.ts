@@ -120,6 +120,21 @@ export function rewriteBilibiliRequestHeaders(
 // 避免把容器里其他站点的凭据一起发给 B 站
 export const FIREFOX_CONTAINER_COOKIE_DOMAIN = 'bilibili.com'
 
+// 凭证头只允许发往 B 站自家域名;第三方 API 目标(如 BSB)一律不带。
+// 自定义头的转换监听器只覆盖 B 站域名,非 B 站目标上的原始头会原样上网。
+export function isBilibiliHostUrl(url: string): boolean {
+  try {
+    const { hostname } = new URL(url)
+    return hostname === 'bilibili.com'
+      || hostname === 'hdslb.com'
+      || hostname.endsWith('.bilibili.com')
+      || hostname.endsWith('.hdslb.com')
+  }
+  catch {
+    return false
+  }
+}
+
 export function getFirefoxContainerCookies(storeId: string) {
   return browser.cookies.getAll({ storeId, domain: FIREFOX_CONTAINER_COOKIE_DOMAIN })
 }
@@ -163,7 +178,8 @@ function apiListenerFactory(API_MAP: APIMAP) {
     const api = API_MAP[contentScriptQuery] as API
 
     // eslint-disable-next-line node/prefer-global/process
-    if (process.env.FIREFOX && sender && sender.tab && sender.tab.cookieStoreId) {
+    if (process.env.FIREFOX && sender && sender.tab && sender.tab.cookieStoreId
+      && isBilibiliHostUrl(api.url)) {
       const cookies = await getFirefoxContainerCookies(sender.tab.cookieStoreId)
       return doRequest(message, api, sendResponse, cookies)
     }
@@ -203,7 +219,8 @@ function doRequest(message: Message, api: API, sendResponse?: Function, cookies?
         : JSON.stringify(targetBody)
     }
     // generate cookies
-    if (cookies) {
+    // 双保险:即便上游误传 cookies,非 B 站目标也绝不附加凭证头
+    if (cookies && isBilibiliHostUrl(url)) {
       const cookieStr = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ')
       headers['firefox-multi-account-cookie'] = cookieStr
     }

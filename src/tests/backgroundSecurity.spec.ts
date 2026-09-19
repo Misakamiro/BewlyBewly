@@ -5,6 +5,7 @@ import { isSafeOpenUrl } from '~/background/messageListeners/tabs'
 import {
   FIREFOX_CONTAINER_COOKIE_DOMAIN,
   getFirefoxContainerCookies,
+  isBilibiliHostUrl,
   isTrustedMessageSender,
   rewriteBilibiliRequestHeaders,
   shouldRewriteBilibiliRequestHeaders,
@@ -137,5 +138,21 @@ describe('background messaging availability latch', () => {
     expect(isBackgroundMessagingAvailable()).toBe(false)
     // 单向锁存:后续调用不再触碰 runtime
     expect(isBackgroundMessagingAvailable()).toBe(false)
+  })
+})
+
+describe('bilibili host url gate', () => {
+  it('accepts bilibili/hdslb hosts and their subdomains', () => {
+    expect(isBilibiliHostUrl('https://api.bilibili.com/x/view?bvid=BV1')).toBe(true)
+    expect(isBilibiliHostUrl('https://www.bilibili.com/')).toBe(true)
+    expect(isBilibiliHostUrl('https://bilibili.com/')).toBe(true)
+    expect(isBilibiliHostUrl('https://i0.hdslb.com/img.png')).toBe(true)
+  })
+
+  it('rejects lookalike and third-party hosts (credential header must never attach)', () => {
+    expect(isBilibiliHostUrl('https://bsbsb.top/api/skipSegments')).toBe(false)
+    expect(isBilibiliHostUrl('https://evilbilibili.com/')).toBe(false)
+    expect(isBilibiliHostUrl('https://bilibili.com.evil.com/')).toBe(false)
+    expect(isBilibiliHostUrl('not a url')).toBe(false)
   })
 })

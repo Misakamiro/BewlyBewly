@@ -30,6 +30,8 @@ export function setupSponsorBlock() {
   let currentSegments: SponsorSegment[] = []
   let skippedUuids = new Set<string>()
   let onTimeUpdate: (() => void) | null = null
+  let appliedMarkerCount = 0
+  let setupTimer: ReturnType<typeof setTimeout> | null = null
 
   const isActive = () =>
     settings.value.enableSponsorBlockMark || settings.value.enableSponsorBlockAutoSkip
@@ -40,8 +42,13 @@ export function setupSponsorBlock() {
 
   function applyMarkers(video: HTMLVideoElement) {
     clearMarkers()
-    if (!settings.value.enableSponsorBlockMark || currentSegments.length === 0)
+    // -1 = 本次未能绘制(进度条/时长未就绪),自愈逻辑会持续重试;
+    //  0 = 确实无可绘制内容
+    appliedMarkerCount = -1
+    if (!settings.value.enableSponsorBlockMark || currentSegments.length === 0) {
+      appliedMarkerCount = 0
       return
+    }
     const bar = document.querySelector('.bpx-player-progress') as HTMLElement | null
     if (!bar)
       return
@@ -50,6 +57,7 @@ export function setupSponsorBlock() {
       : currentSegments[0]?.videoDuration
     if (!duration || !Number.isFinite(duration) || duration <= 0)
       return
+    let drawn = 0
     for (const seg of currentSegments) {
       const [start, end] = seg.segment
       // 试看/预览等场景下 video.duration 可能远小于分段位置,超出部分不画
@@ -71,17 +79,34 @@ export function setupSponsorBlock() {
         pointerEvents: 'none',
       } as CSSStyleDeclaration)
       bar.appendChild(el)
+      drawn++
     }
+    appliedMarkerCount = drawn
   }
 
   function handleTimeUpdate() {
-    const video = currentVideoEl
+    let video = currentVideoEl
     if (!video)
       return
 
-    // 播放器重建进度条后自愈:标记数量与分段数不符时重画
+    // 播放器重建 <video>(清晰度切换/试看转正等)后重新挂接监听与标记
+    if (!video.isConnected) {
+      const fresh = document.querySelector('video') as HTMLVideoElement | null
+      if (!fresh)
+        return
+      if (onTimeUpdate)
+        video.removeEventListener('timeupdate', onTimeUpdate)
+      fresh.addEventListener('timeupdate', onTimeUpdate!)
+      currentVideoEl = fresh
+      appliedMarkerCount = -1
+      video = fresh
+    }
+
+    // 进度条被播放器重建后自愈:实际标记数与上次绘制数不符时重画
+    // (与 appliedMarkerCount 比较而非分段总数:试看等场景下部分分段不绘制,
+    //  否则会每次 timeupdate 都无限重画)
     if (settings.value.enableSponsorBlockMark && currentSegments.length > 0
-      && document.querySelectorAll(`.${MARKER_CLASS}`).length !== currentSegments.length) {
+      && document.querySelectorAll(`.${MARKER_CLASS}`).length !== appliedMarkerCount) {
       applyMarkers(video)
     }
 
@@ -103,12 +128,17 @@ export function setupSponsorBlock() {
     setupToken++
     abortController?.abort()
     abortController = null
+    if (setupTimer) {
+      clearTimeout(setupTimer)
+      setupTimer = null
+    }
     if (currentVideoEl && onTimeUpdate)
       currentVideoEl.removeEventListener('timeupdate', onTimeUpdate)
     currentVideoEl = null
     onTimeUpdate = null
     currentSegments = []
     skippedUuids = new Set()
+    appliedMarkerCount = 0
     clearMarkers()
     setSponsorState('off')
   }
@@ -120,8 +150,10 @@ export function setupSponsorBlock() {
     if (!isActive())
       return
 
+    // 稍后再看/收藏夹播放列表页:bvid 在查询参数里
     const bvid = parseBvidFromPath(location.pathname)
-    if (!bvid) {
+      ?? new URLSearchParams(location.search).get('bvid')
+    if (!bvid || !/^BV[0-9A-Za-z]+$/.test(bvid)) {
       // eslint-disable-next-line no-console
       console.debug('[BewlySponsor] no bvid parsed')
       setSponsorState('no-bvid')
@@ -196,15 +228,19 @@ export function setupSponsorBlock() {
     },
   )
 
-  // 站内切换视频(pushState/replaceState)与浏览器前进后退
-  useEventListener(window, 'historyChange', () => {
-    if (isActive())
-      setup()
-  })
-  useEventListener(window, 'popstate', () => {
-    if (isActive())
-      setup()
-  })
+  // 站内切换视频(pushState/replaceState)与浏览器前进后退;
+  // B 站会高频触发 replaceState,做 300ms 防抖避免重复拉取
+  function scheduleSetup() {
+    if (setupTimer)
+      clearTimeout(setupTimer)
+    setupTimer = setTimeout(() => {
+      setupTimer = null
+      if (isActive())
+        setup()
+    }, 300)
+  }
+  useEventListener(window, 'historyChange', scheduleSetup)
+  useEventListener(window, 'popstate', scheduleSetup)
 
   setup()
 }

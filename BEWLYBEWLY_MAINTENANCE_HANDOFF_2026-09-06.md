@@ -4,7 +4,7 @@
 项目目录：`C:\Users\misakamiro\Documents\ChatGPT\哔哩哔哩插件`
 维护分支：`codex/maintenance-v0.41.1`
 源码基线：官方归档 `v0.41.1`，提交 `1e2f5f10a299bd53a1f9200004af07764e5946c7`
-> **2026-09-14 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成五轮全面审计与四层自动化测试，当前维护版本为 **0.41.8（0.41.7 已验收合格见第 15 节；0.41.8 新增视频内推广标记/跳过，见第 16 节）**，全部改动均已提交到本分支。**以最后一节为准。**
+> **2026-09-14 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成五轮全面审计与四层自动化测试，当前维护版本为 **0.41.9（0.41.7 已验收见第 15 节；0.41.8 推广标记/跳过见第 16 节；0.41.9 修复推广功能 Firefox 凭证头泄露 P0 见第 17 节）**，全部改动均已提交到本分支。**以最后一节为准。**
 
 ## 1. 当前结论
 
@@ -500,3 +500,35 @@ extension.zip SHA256: AFE0DEE3465413B1A6BBCB5F30BF1BC4E6D4D81AA7EEB204916FF1F8C9
 
 - 本次 manifest 新增了第三方 host 权限(bsbsb.top/xyz),用户更新后浏览器会提示"新增权限",可能需要重新启用扩展一次。
 - 隐私:开关开启时,视频页会把 BV 号匿名 GET 给 bsbsb.top;关闭即无请求。
+
+## 17. 2026-09-19 第六轮审查:推广功能 P0 修复(v0.41.9)
+
+### 审查发现(安全维度 NOT ACCEPTED → 修复后复验)
+
+- **P0(Firefox 构建)**:推广分段请求经后台代理时,`doRequest` 对**任意目标 URL** 都附加 `firefox-multi-account-cookie` 凭证头(含 SESSDATA/bili_jct 等全量 B 站 Cookie),而剥头转换监听器只覆盖 `*.bilibili.com/*.hdslb.com`——启用推广功能后,请求发往第三方 bsbsb.top 时该头会**原样上网**(会话劫持级泄露)。Chrome/Safari 不受影响(无 cookieStoreId 分支)。触发条件:Firefox + 开启任一推广开关 + 登录态。
+- P2-1:播放器重建 `<video>` 后 timeupdate 监听滞留在已分离元素上,标记/跳过静默失效。
+- P2-2:试看场景(部分分段超出 duration 不绘制)下自愈条件永不相等,导致每次 timeupdate 无限重画。
+- P3:historyChange/popstate 无防抖(B 站高频 replaceState 导致重复拉取);稍后再看/收藏夹播放页 bvid 在查询参数中未被解析;`bsbsb.xyz` 为死权限;文档 `data-sponsor-state` 状态列表含从未输出的 `none`。
+
+### 修复(v0.41.9)
+
+- `src/background/utils.ts`:新增 `isBilibiliHostUrl()`;**双重门禁**——apiListenerFactory 仅对 B 站域名目标收集容器 Cookie;doRequest 侧即使误传 cookies,非 B 站目标也绝不附加凭证头。
+- `useSponsorBlock.ts`:timeupdate 内检测 `<video>` 已分离时重新挂接;自愈计数改用"实际绘制数"(哨兵 -1 表示待重试,试看/时长未就绪时持续重试直至成功);historyChange/popstate 300ms 防抖;稍后再看/收藏夹页从 `?bvid=` 查询参数解析。
+- `manifest.ts`:移除未使用的 `bsbsb.xyz` 权限。
+- 测试:34/34(新增 `isBilibiliHostUrl` 门禁用例,含 `evilbilibili.com`/`bilibili.com.evil.com` 形近域名拒绝)。
+
+### 复验(全部通过)
+
+- 静态:vitest 34/34、typecheck、lint、knip、audit --prod 0 漏洞。
+- 构建:Chromium 0.41.9 / Firefox 0.41.9 / Safari(0.41.8 验证过构建链,0.41.9 无构建相关改动)。
+- e2e:sponsor(随机到 5 分段视频,标记 5/5 渲染、自动跳过、零错误)/ drawer / 主页回归 9/9 — 全过。
+
+```text
+manifest version    : 0.41.9
+extension.zip bytes : 16044947(以最终 pack 输出为准)
+extension.zip SHA256: 见打包输出(jszip-cli 非确定性,核对方式见第 13 节)
+```
+
+### 待办
+
+- 动态图文(opus)详情页显示错位:登录态下无法在自动化环境复现(未登录复现布局正常),等待用户提供地址栏 URL、F5 后是否持续、以及 0.41.7 及之前版本是否已存在等信息。
