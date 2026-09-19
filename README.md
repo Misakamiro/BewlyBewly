@@ -1,109 +1,84 @@
-# BewlyBewly
-
-English | [官话 - 简体中文](README-cmn_CN.md) | [官話 - 繁體中文](README-cmn_TW.md) | [廣東話](README-jyut.md)
+# BewlyBewly(个人维护分支)
 
 <p align="center" style="margin-bottom: 0px !important;">
 <img width="300" alt="BewlyBewly icon" src="https://cdn.jsdelivr.net/gh/BewlyBewly/Imgs/logos/bewlybewly-vtuber-logo.png"><br/>
 </p>
 
-<p align="center">Just make a few small changes to your Bilibili homepage.</p>
+<p align="center">基于 <a href="https://github.com/hakadao/BewlyBewly">hakadao/BewlyBewly</a> <code>v0.41.1</code> 的个人维护分支。原项目已停止维护,本分支在其基础上继续修复问题并添加功能。</p>
 
-<!-- ![min1](https://github.com/hakadao/BewlyBewly/assets/33394391/951f9e2a-d0e1-452c-83a9-dc6d85c4d441)
-![min2](https://github.com/hakadao/BewlyBewly/assets/33394391/3e75dd20-f60b-4645-b434-23a24c72959c) -->
+> 原项目的介绍、完整功能列表与截图请看 [原项目 README](https://github.com/hakadao/BewlyBewly#readme)。
+> 分支基于 MIT 许可证开源,感谢原作者 Hakadao 与所有上游贡献者。
 
-## 👋 Introduction
+## 📦 安装
 
-> [!IMPORTANT]
-> BewlyBewly mainly focuses on page adjustments and optimization rather than improving functionally and efficiency.
->
-> The dark mode will only be adapted to commonly used pages due to its efficiency and maintenance difficulty, while less
-> frequently used pages will not to be adapted.
+1. 下载本仓库 Release 中的 `extension.zip` 并解压(或直接使用仓库的 `extension/` 目录);
+2. 打开浏览器扩展管理页(Edge:`edge://extensions`,Chrome:`chrome://extensions`);
+3. 开启"开发人员模式" → "加载解压缩的扩展" → 选择解压后的目录。
 
-> [!CAUTION]
-> [BLBewly](https://apps.apple.com/us/app/blbewly/id6742200021) is a free BewlyBewly extension on Safari. We thank [𝗦𝘁𝗲𝘃𝗲 𝕏](https://x.com/st7evechou) for their help with the free publication of the app to Safari.
-> However, issues encountered with the Safari version are outside of our maintenance scope,
-> and we are not considering Safari maintenance.
+Firefox 用户可自行以 `pnpm build-firefox` 构建。
 
-> [!CAUTION]
-> If you are installing this extension, your browser will probably say that it can read your browser history.
->
-> This is because BewlyBewly uses the ["tabs" permission](https://developer.chrome.com/docs/extensions/reference/api/tabs), which can also be used to read each tab, allowing it to know the browsing history, but it is not utilized here.
->
-> **Some browsers will mention the worst-case scenario and the highest risks, ensuring your safety after installation.**
-> Additionally, this project is open source, so you can see what exactly what it does.
+## ✨ 相对原项目的新增功能
 
-BewlyBewly is a browser extension for BiliBili that aims to enhance the user experience by redesigning the BiliBili UI.
-The design is inspired by YouTube, Vision OS, and iOS, resulting in a more visually appealing and user-friendly interface.
-This project uses the [vitesse-webext](https://github.com/antfu/vitesse-webext) template for development.
-Without this template, it may not be possible to develop this project.
+### 视频内推广标记与自动跳过(v0.41.8)
 
-## ⬇️ Installation
+- 在 B 站视频播放器进度条上以琥珀色条标出 UP 主的恰饭/自推广片段;
+- 可开启自动跳过:播放进入推广片段时自动跳到段尾,并弹出提示;
+- 分段数据来自 [BilibiliSponsorBlock](https://github.com/hanydd/BilibiliSponsorBlock) 社区数据库(bsbsb.top),匿名 GET、不携带任何 Cookie;两个开关均关闭时不产生任何请求;
+- 支持多 P 视频(按分 P cid 精确匹配)、站内切换视频、稍后再看/收藏夹播放页,以及在本扩展抽屉内打开的视频;
+- 位置:设置 → 通用 → "视频内推广标记(SponsorBlock)"。
 
-### Online Installation
+## 🔧 相对原项目的修复(按版本)
 
-> [!TIP]
-> Even in the Edge browser, we strongly recommend you install it in the Chrome web store.
-> In terms of review speed, the Chrome web store is faster than Edge Add-ons.
->
-> Additionally, the Chrome Web Store version of BewlyBewly will address and fix critical bugs more quickly.
+### v0.41.2(接手基线)
 
-- Chrome: <https://chromewebstore.google.com/detail/bewlybewly/bbbiejemhfihiooipfcjmjmbfdmobobp>
-- Edge: <https://chromewebstore.google.com/detail/bewlybewly/bbbiejemhfihiooipfcjmjmbfdmobobp>
-- Firefox: <https://addons.mozilla.org/en-US/firefox/addon/bewlybewly/>
+- 首页推荐迁移到 B 站现行 **WBI V8** 接口(原 V2 接口已失效);
+- 过滤广告卡片与缺少 `owner`/`stat` 的不完整卡片;分页与刷新加入请求代数守卫,防止旧响应污染新列表。
 
-#### To Firefox users
+### v0.41.3(安全加固)
 
-> [!WARNING]
-> When using the Firefox browser, remember to enable all permissions shown in the picture below for normal use of BewlyBewly
+- Firefox 多账户容器:Cookie 收集仅限 B 站域,凭证头不再以明文形式残留于网络请求;
+- 后台消息代理增加发送者校验;窗口消息增加 origin 校验;
+- `web_accessible_resources` 从 `<all_urls>` 收敛到实际注入的站点;移除未使用的 `tabs` 权限;
+- 升级 vue-i18n / dompurify,生产依赖漏洞清零。
 
-<br/> <img width="655" alt="enable all bewlybewly permissions on firefox" src="https://github.com/hakadao/BewlyBewly/assets/33394391/9566aed8-040a-4435-a2ec-c61117f8e429">
+### v0.41.4(消息层重构)
 
-### Local Installation
+- 后台消息监听器改为启动时直接注册(原先依赖 webext-bridge 的端口连接"偶然"生效,冷启动首条消息可能丢失);
+- 完全移除 webext-bridge 运行时依赖(此前以 devDependency 身份被打进产物,依赖审计覆盖不到);
+- Firefox 请求头改写改由凭证头自身触发,过滤范围从 `<all_urls>` 收敛到 B 站域名。
 
-[CI](https://github.com/hakadao/BewlyBewly/actions): Automatically build with the latest code
+### v0.41.5 – v0.41.6(健壮性)
 
-[Releases](https://github.com/hakadao/BewlyBewly/releases): Stable version
+- Firefox 请求头改写改为 fail-closed(异常时凭证头仍被剥离),门控逻辑提取为纯函数并有测试;
+- 设置导入增加校验(JSON 解析 + 自有属性检查);过滤正则非法时跳过而非崩溃;
+- 修复 inject 脚本 `toString` 伪装失效;抽屉打开畸形 URL 时优雅降级;
+- 移除未使用的 popup/options 演示页面(产物从 53 文件降至 27 文件)。
 
-#### Edge & Chrome (RECOMMENDED)
+### v0.41.7(重载体验)
 
-> Ensure you installed [extension.zip](https://github.com/hakadao/BewlyBewly/releases) .
+- 扩展重载/更新后,旧页面不再刷 "Extension context invalidated" 错误(检测 context 失效并静默停摆);
+- 修复搜索框回车与横向滚动的 passive 事件告警(preventDefault 实际失效)。
 
-Opening the `edge://extensions` page in the Edge or `chrome://extensions` page in Chrome,
-simply drag and drop the downloaded `extension.zip` file into the browser to complete the installation.
+### v0.41.9(Firefox 安全修复)
 
-<details>
- <summary> Another installation method for Edge & Chrome </summary>
+- 修复推广功能代理请求在 Firefox 下把含 B 站登录凭据的 Cookie 头带给第三方 bsbsb.top 的问题(双重域名门禁);
+- 播放器重建 `<video>` 后自动重新挂接(清晰度切换/试看转正不再静默失效);
+- 试看/预览场景下标记不再无限重画;站内切换防抖;支持稍后再看/收藏夹播放页。
 
-#### Edge
+## ⚠️ 与原项目的权限差异
 
-> Ensure you installed [extension.zip](https://github.com/hakadao/BewlyBewly/releases) and decompress this file.
+- 新增:`https://bsbsb.top/*`(仅当开启推广标记/跳过功能时使用,匿名请求);
+- 移除:`tabs`、`webRequest`(Chrome 构建保留 Firefox 专有的 `webRequest`/`webRequestBlocking`/`cookies`)。
 
-1. Type in `edge://extensions/` in the address bar and press Enter
-2. Turn on `Developer mode` then press `Load Unpacked` <br/> <img width="655" alt="image" src="https://user-images.githubusercontent.com/33394391/232246901-e3544c16-bde2-480d-b770-ca5242793963.png">
-3. Load the decompressed extension folder in your browser
+## 🧪 开发
 
-#### Chrome
->
-> Ensure you installed [extension.zip](https://github.com/hakadao/BewlyBewly/releases) and decompress this file.
+```bash
+corepack pnpm install
+corepack pnpm dev            # 开发模式
+corepack pnpm build          # 生产构建(输出到 extension/)
+corepack pnpm exec vitest run  # 单元测试(34 个)
+```
 
-1. Type in `chrome://extensions/` in the address bar and press Enter
-2. Turn on `Developer mode` then press `Load Unpacked` <br/> <img width="655" alt="Snipaste_2022-03-27_18-17-04" src="https://user-images.githubusercontent.com/33394391/160276882-13da0484-92c1-47dd-add8-7655c5c2bf1c.png">
-3. Load the decompressed extension folder in your browser
+## 📄 许可证
 
-</details>
-
-## 🤝 Contribution & Build
-
-See [CONTRIBUTING.md](docs/CONTRIBUTING.md)
-
-### Contributors
-
-[![Contributors](https://contrib.rocks/image?repo=hakadao/BewlyBewly)](https://github.com/BewlyBewly/BewlyBewly/graphs/contributors)
-
-## ❤️ Credits
-
-- [vitesse-webext](https://github.com/antfu/vitesse-webext) - The template used for this project
-- [UserScripts/bilibiliHome](https://github.com/indefined/UserScripts/tree/master/bilibiliHome),
-[bilibili-app-recommend](https://github.com/magicdawn/bilibili-app-recommend) - Reference source for obtaining the access key
-- [Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved) - Partial implementation of functionalities
-- [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)
+[MIT](LICENSE) © 原项目作者 Hakadao 及上游贡献者;本分支的改动同样以 MIT 发布。
