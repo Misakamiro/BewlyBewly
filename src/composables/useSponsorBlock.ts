@@ -9,6 +9,11 @@ import { filterSponsorSegments, getPageNumberFromSearch, parseBvidFromPath, reso
 
 const MARKER_CLASS = 'bewly-sponsor-marker'
 
+// 在 #bewly 宿主上暴露功能状态(调试与 e2e 断言用)
+function setSponsorState(state: string) {
+  document.querySelector('#bewly')?.setAttribute('data-sponsor-state', state)
+}
+
 // 视频页推广分段(BilibiliSponsorBlock):进度条标记 + 自动跳过。
 // 从 App.vue setup 调用;视频页在顶窗和 IframeDrawer 内都会跑本逻辑
 // (manifest all_frames: true)。
@@ -105,6 +110,7 @@ export function setupSponsorBlock() {
     currentSegments = []
     skippedUuids = new Set()
     clearMarkers()
+    setSponsorState('off')
   }
 
   async function setup() {
@@ -118,8 +124,10 @@ export function setupSponsorBlock() {
     if (!bvid) {
       // eslint-disable-next-line no-console
       console.debug('[BewlySponsor] no bvid parsed')
+      setSponsorState('no-bvid')
       return
     }
+    setSponsorState('loading')
 
     const token = setupToken
     abortController = new AbortController()
@@ -172,6 +180,7 @@ export function setupSponsorBlock() {
     currentSegments = segments
     if (token !== setupToken)
       return
+    setSponsorState(`segments:${currentSegments.length}`)
     // eslint-disable-next-line no-console
     console.debug('[BewlySponsor] applying', { segments: currentSegments.length, duration: currentVideoEl?.duration })
     applyMarkers(currentVideoEl)
