@@ -4,7 +4,7 @@
 项目目录：`C:\Users\misakamiro\Documents\ChatGPT\哔哩哔哩插件`
 维护分支：`codex/maintenance-v0.41.1`
 源码基线：官方归档 `v0.41.1`，提交 `1e2f5f10a299bd53a1f9200004af07764e5946c7`
-> **2026-09-14 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成五轮全面审计与四层自动化测试，当前维护版本为 **0.41.7（已验收合格，见第 15 节）**，全部改动均已提交到本分支。**以最后一节为准。**
+> **2026-09-14 更新**：第 1–9 节为 v0.41.2 交接时的历史记录。接手维护者已完成五轮全面审计与四层自动化测试，当前维护版本为 **0.41.8（0.41.7 已验收合格见第 15 节；0.41.8 新增视频内推广标记/跳过，见第 16 节）**，全部改动均已提交到本分支。**以最后一节为准。**
 
 ## 1. 当前结论
 
@@ -456,3 +456,45 @@ extension.zip SHA256: D5AED82A3FC9BE8AECEE4DA1B73DD4E2084785D9781AEEBB10C022E327
 ### 验收结论
 
 **BewlyBewly 0.41.7 验收合格**,作为本维护分支的交付基线。
+
+## 16. 2026-09-19 新功能:视频内推广标记 + 自动跳过(v0.41.8)
+
+数据源:BilibiliSponsorBlock 社区数据库(bsbsb.top,SponsorBlock 兼容协议,活跃维护)。类别范围:`sponsor`(恰饭)+ `selfpromo`(自推广);三连提醒、片头片尾等不处理。
+
+### 设置(General 页新分组"视频内推广标记(SponsorBlock)")
+
+- `enableSponsorBlockMark`:进度条上以琥珀色半透明条标记推广分段(默认关)。
+- `enableSponsorBlockAutoSkip`:播放进入分段自动 seek 到段尾并 toast 提示(默认关)。两开关均关时不产生任何 BSB 请求。
+
+### 实现
+
+- `src/manifest.ts`:host_permissions 增加 `https://bsbsb.top/*`、`https://bsbsb.xyz/*`(MV3 后台 fetch 过 CORS)。
+- `src/background/messageListeners/api/sponsorBlock.ts`(新):`getSponsorSegments` 端点,经既有后台 fetch 代理匿名 GET(不带 cookie);无分段(404)按空处理。
+- `src/utils/sponsorBlock.ts`(新,纯函数):bvid 解析、多 P cid 定位(view API pages[] + URL `?p=`)、分段过滤(类别 + cid 匹配 + 无 cid 仅单 P 采用 + 非法区间剔除)。
+- `src/composables/useSponsorBlock.ts`(新):从 App.vue setup 调用;`queryDomUntilFound('video')` + `.bpx-player-progress` 注入标记(`.bewly-sponsor-marker`,pointer-events none,timeupdate 自愈重画,超出 video.duration 的分段不画——试看场景);timeupdate 驱动自动跳过(UUID 锁存防重复,toast 提示);`historyChange`/`popstate` 应对站内切视频;两个开关 watch 即时生效。IframeDrawer 内的视频因 `all_frames: true` 自动生效。
+- 设置/`UI/i18n`:storage.ts 两个布尔项;General.vue 新分组;en/cmn-CN/cmn-TW/jyut 四语 keys。
+- 新增 `.zcode/` 到 gitignore 与 eslint ignores(工具工件目录)。
+
+### 测试与验收(全部通过)
+
+- vitest **32/32**(新增 sponsorBlock 纯函数 11 个用例)、typecheck、lint、knip、audit --prod 0 漏洞。
+- 构建矩阵:Chromium / Firefox 0.41.8 / Safari 0.41.8 全过;pack:zip 27 文件无 _metadata。
+- **真实浏览器 e2e(`.evidence/acceptance-sponsor.cjs`,全程静音)**:S0 动态挑选 BSB 有分段且非番剧的普通视频 → S1 经 service worker 预置开关(useStorageLocal 存 JSON 字符串,必须 stringify)→ S2 标记渲染 → S3 seek 进分段后自动跳过到段尾之外 → S4 零扩展控制台错误。证据含进度条特写截图(橙色标记带清晰可见)。
+- 回归:`acceptance-v0417.cjs` 9/9 PASS(0.41.8)。
+
+### 排障记录(供后人)
+
+- 测试初期选中的"视频"实为番剧(B 站将 /video/BV... 重定向到 /bangumi/play/ep...),bvid 解析按设计拒绝——BSB 不覆盖番剧,找测试视频需同时过 view API 校验。
+- 预置设置经 service worker 写 `chrome.storage.local` 时必须 `JSON.stringify`(useStorageLocal 存字符串),否则 JSON.parse("[object Object]") 崩且开关不生效。
+- playwright 的 context response 事件看不到 service worker 的 fetch——诊断 BSB 请求须用 composable 内的 console.debug 或其他手段。
+
+```text
+manifest version    : 0.41.8
+extension.zip bytes : 16,045,806
+extension.zip SHA256: AFE0DEE3465413B1A6BBCB5F30BF1BC4E6D4D81AA7EEB204916FF1F8C99B7A6B
+```
+
+### 注意
+
+- 本次 manifest 新增了第三方 host 权限(bsbsb.top/xyz),用户更新后浏览器会提示"新增权限",可能需要重新启用扩展一次。
+- 隐私:开关开启时,视频页会把 BV 号匿名 GET 给 bsbsb.top;关闭即无请求。

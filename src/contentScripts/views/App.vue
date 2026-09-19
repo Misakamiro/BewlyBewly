@@ -4,6 +4,7 @@ import type { Ref } from 'vue'
 
 import type { BewlyAppProvider } from '~/composables/useAppProvider'
 import { useDark } from '~/composables/useDark'
+import { setupSponsorBlock } from '~/composables/useSponsorBlock'
 import { BEWLY_MOUNTED, DRAWER_VIDEO_ENTER_PAGE_FULL, DRAWER_VIDEO_EXIT_PAGE_FULL, IFRAME_PAGE_SWITCH_BEWLY, IFRAME_PAGE_SWITCH_BILI, OVERLAY_SCROLL_BAR_SCROLL } from '~/constants/globalEvents'
 import { AppPage } from '~/enums/appEnums'
 import { settings } from '~/logic'
@@ -156,6 +157,9 @@ watch([() => showTopBar.value, () => activatedPage.value], () => {
 
 // Setup necessary settings watchers
 setupNecessarySettingsWatchers()
+
+// 视频页推广分段标记/自动跳过(内部自带页面与开关门控)
+setupSponsorBlock()
 
 onMounted(() => {
   window.dispatchEvent(new CustomEvent(BEWLY_MOUNTED))

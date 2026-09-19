@@ -16,6 +16,8 @@ common:
   minute: minute ago | minutes ago
   second: second ago | seconds ago
   please_log_in_first: Please log in first
+  sponsor_skipped: Promotion segment skipped
+  sponsor_marker_title: Promotion segment
   login: Login
   save_to_watch_later: Save to Watch later
   added: Added
@@ -148,6 +150,15 @@ settings:
   block_top_search_page_ads_desc: >
     Sometimes, the ads above search results are actually year-end summaries or annual reports.
     If you don't want these to be accidentally removed, please disable this option.
+
+  group_sponsor_block: In-video promotions (SponsorBlock)
+  enable_sponsor_block_mark: Mark promotion segments on the progress bar
+  enable_sponsor_block_mark_desc: >
+    Mark sponsor/self-promotion segments on the video progress bar. Segment data comes from the
+    BilibiliSponsorBlock community database (bsbsb.top). Works on video pages and videos opened in the drawer.
+  enable_sponsor_block_auto_skip: Auto skip promotion segments
+  enable_sponsor_block_auto_skip_desc: >
+    Automatically seek to the end of a promotion segment when playback reaches it, with a notice.
 
   enable_video_preview: Enable video preview feature (if possible)
   enable_video_ctrl_bar_on_video_card: Display the video control bar on the video card

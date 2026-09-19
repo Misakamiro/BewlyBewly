@@ -22,6 +22,10 @@ export interface Settings {
 
   enableVideoPreview: boolean
 
+  // Video page sponsor segments (BilibiliSponsorBlock)
+  enableSponsorBlockMark: boolean
+  enableSponsorBlockAutoSkip: boolean
+
   // Link Opening Behavior
   videoCardLinkOpenMode: 'drawer' | 'newTab' | 'currentTab'
   topBarLinkOpenMode: 'currentTab' | 'currentTabIfNotHomepage' | 'newTab'
@@ -135,6 +139,9 @@ export const originalSettings: Settings = {
   blockTopSearchPageAds: false,
 
   enableVideoPreview: true,
+
+  enableSponsorBlockMark: false,
+  enableSponsorBlockAutoSkip: false,
   enableVideoCtrlBarOnVideoCard: false,
   hoverVideoCardDelayed: false,
 

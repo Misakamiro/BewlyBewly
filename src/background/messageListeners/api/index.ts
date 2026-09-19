@@ -10,6 +10,7 @@ import API_MOMENT from './moment'
 import API_NOTIFICATION from './notification'
 import API_RANKING from './ranking'
 import API_SEARCH from './search'
+import API_SPONSOR_BLOCK from './sponsorBlock'
 import API_USER from './user'
 import API_VIDEO from './video'
 import API_WATCHLATER from './watchLater'
@@ -23,6 +24,7 @@ export const API_COLLECTION = {
   NOTIFICATION: API_NOTIFICATION,
   RANKING: API_RANKING,
   SEARCH: API_SEARCH,
+  SPONSOR_BLOCK: API_SPONSOR_BLOCK,
   USER: API_USER,
   VIDEO: API_VIDEO,
   WATCHLATER: API_WATCHLATER,

@@ -16,6 +16,8 @@ common:
   minute: 分鐘前
   second: 秒前
   please_log_in_first: 請先登入
+  sponsor_skipped: 已跳過推廣片段
+  sponsor_marker_title: 推廣片段
   login: 登入
   save_to_watch_later: 稍後觀看
   added: 已新增
@@ -146,6 +148,15 @@ settings:
   block_top_search_page_ads_desc: >
     有時候，搜尋結果上方的廣告實際上是年末總結、年度報告這些。
     如果你不想這些內容被誤刪，請停用此選項。
+
+  group_sponsor_block: 影片內推廣標記（SponsorBlock）
+  enable_sponsor_block_mark: 在進度條上標記推廣片段
+  enable_sponsor_block_mark_desc: >
+    在影片進度條上標記 UP 主的恰飯／自推廣片段。分段資料來自 BilibiliSponsorBlock 社群資料庫（bsbsb.top），
+    對影片頁和抽屜內開啟的影片生效。
+  enable_sponsor_block_auto_skip: 自動跳過推廣片段
+  enable_sponsor_block_auto_skip_desc: >
+    播放到推廣片段時自動跳到片段結束，並給出提示。
 
   enable_video_preview: 啓用影片預覽功能（如果可以的話）
   enable_video_ctrl_bar_on_video_card: 在影片卡片上顯示影片控制欄

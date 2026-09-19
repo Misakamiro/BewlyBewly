@@ -34,6 +34,7 @@ export default antfu(
         'extension-firefox',
         '.evidence',
         '.mimosa',
+        '.zcode',
       ],
     },
   },

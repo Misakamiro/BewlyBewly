@@ -178,6 +178,15 @@ watch(() => settings.value.language, (newValue) => {
       </SettingsItem>
     </SettingsItemGroup>
 
+    <SettingsItemGroup :title="$t('settings.group_sponsor_block')">
+      <SettingsItem :title="$t('settings.enable_sponsor_block_mark')" :desc="$t('settings.enable_sponsor_block_mark_desc')">
+        <Radio v-model="settings.enableSponsorBlockMark" />
+      </SettingsItem>
+      <SettingsItem :title="$t('settings.enable_sponsor_block_auto_skip')" :desc="$t('settings.enable_sponsor_block_auto_skip_desc')">
+        <Radio v-model="settings.enableSponsorBlockAutoSkip" />
+      </SettingsItem>
+    </SettingsItemGroup>
+
     <SettingsItemGroup :title="$t('settings.group_video_card')">
       <SettingsItem :title="$t('settings.enable_video_preview')">
         <Radio v-model="settings.enableVideoPreview" />

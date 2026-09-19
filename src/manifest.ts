@@ -60,6 +60,9 @@ export async function getManifest() {
     host_permissions: [
       '*://*.bilibili.com/*',
       '*://*.hdslb.com/*',
+      // BilibiliSponsorBlock 社区数据库(视频内推广分段),镜像见 background API
+      'https://bsbsb.top/*',
+      'https://bsbsb.xyz/*',
     ],
     content_scripts: [
       {
