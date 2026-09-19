@@ -525,8 +525,8 @@ extension.zip SHA256: AFE0DEE3465413B1A6BBCB5F30BF1BC4E6D4D81AA7EEB204916FF1F8C9
 
 ```text
 manifest version    : 0.41.9
-extension.zip bytes : 16044947(以最终 pack 输出为准)
-extension.zip SHA256: 见打包输出(jszip-cli 非确定性,核对方式见第 13 节)
+extension.zip bytes : 16,045,992(27 文件)
+extension.zip SHA256: D2C5644E8B7EACF1D1EC27EBD9B6E9BCFADA50445B143E326566FAB4977A904E(jszip-cli 非确定性,核对方式见第 13 节)
 ```
 
 ### 待办
