@@ -1,4 +1,13 @@
 .bewly-design.homePage {
+  // 主页顶栏背景完全透空:原生顶栏衬底(白色不透明条 + 容器白底)在 bewly
+  // 主页上会遮住壁纸/皮肤,并在底部形成横向"断层"。这里整体透明,
+  // 让壁纸从页面最顶端开始完整显示,bewly 顶栏元素直接浮在壁纸上
+  .bili-header,
+  .bili-header .bili-header__bar.slide-down {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
   .header-channel {
     // margin-top: 10px;
     // display: none;

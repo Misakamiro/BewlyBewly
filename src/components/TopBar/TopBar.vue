@@ -517,7 +517,7 @@ defineExpose({
                 ? 'rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4) calc(var(--bew-top-bar-height) / 2)'
                 : 'color-mix(in oklab, var(--bew-bg), transparent 20%), color-mix(in oklab, var(--bew-bg), transparent 40%) calc(var(--bew-top-bar-height) / 2)'
             }, transparent)`,
-            opacity: reachTop ? 0.8 : 1,
+            opacity: reachTop ? (isHomePage() ? 0 : 0.8) : 1,
             height: reachTop ? 'var(--bew-top-bar-height)' : 'calc(var(--bew-top-bar-height) + 20px)',
           }"
         />
