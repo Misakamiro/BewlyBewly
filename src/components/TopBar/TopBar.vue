@@ -983,7 +983,8 @@ defineExpose({
 
 :deep(.search-bar) {
   input:not(:focus, :focus-within) {
-    --uno: "!border-$bew-border-color !shadow-$bew-shadow-1";
+    // 无投影:顶栏搜索框的投影会在浅色毛玻璃背景上勾出一条灰色弧带
+    --uno: "!border-$bew-border-color !shadow-none";
   }
 }
 
