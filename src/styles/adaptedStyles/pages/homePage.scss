@@ -1,11 +1,4 @@
 .bewly-design.homePage {
-  // 软化原 B 站顶栏衬底条(slide-down)与壁纸的交界:
-  // 衬底条整条从顶部不透明渐变到条底全透明,任何壁纸上都不会出现横向硬边
-  .bili-header .bili-header__bar.slide-down {
-    -webkit-mask-image: linear-gradient(to bottom, #000, transparent);
-    mask-image: linear-gradient(to bottom, #000, transparent);
-  }
-
   .header-channel {
     // margin-top: 10px;
     // display: none;

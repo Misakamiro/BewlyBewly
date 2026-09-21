@@ -12,7 +12,7 @@ function toggleBewlyTopBar() {
     class="group"
     pos="fixed top-0 right-0"
     z-10
-    w-fit
+    w-full
     flex="~ items-center justify-center"
     m="t-[calc(var(--bew-top-bar-height)-20px)]"
     p="t-30px"
@@ -20,7 +20,7 @@ function toggleBewlyTopBar() {
     <button
       style="backdrop-filter: var(--bew-filter-glass-1);"
       pos="absolute"
-      class="invisible opacity-0 group-hover:opacity-100 group-hover:visible"
+      class="opacity-0 group-hover:opacity-100"
       transform="translate-y--100% group-hover:translate-y-0 hover:translate-y-0"
       flex="~ items-center gap-2"
       text="$bew-text-2 sm"

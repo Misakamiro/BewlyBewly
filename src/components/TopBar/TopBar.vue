@@ -512,10 +512,11 @@ defineExpose({
           pos="absolute top-0 left-0" w-full
           pointer-events-none opacity-100 duration-300
           :style="{
-            // 单一线性渐变:原设计中 32px 处的 0.4 中途停靠点会在壁纸上形成可见的'断层'
-            background: forceWhiteIcon
-              ? 'linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent)'
-              : 'linear-gradient(to bottom, color-mix(in oklab, var(--bew-bg), transparent 20%), transparent)',
+            background: `linear-gradient(to bottom, ${
+              forceWhiteIcon
+                ? 'rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4) calc(var(--bew-top-bar-height) / 2)'
+                : 'color-mix(in oklab, var(--bew-bg), transparent 20%), color-mix(in oklab, var(--bew-bg), transparent 40%) calc(var(--bew-top-bar-height) / 2)'
+            }, transparent)`,
             opacity: reachTop ? 0.8 : 1,
             height: reachTop ? 'var(--bew-top-bar-height)' : 'calc(var(--bew-top-bar-height) + 20px)',
           }"
@@ -983,8 +984,7 @@ defineExpose({
 
 :deep(.search-bar) {
   input:not(:focus, :focus-within) {
-    // 无投影:顶栏搜索框的投影会在浅色毛玻璃背景上勾出一条灰色弧带
-    --uno: "!border-$bew-border-color !shadow-none";
+    --uno: "!border-$bew-border-color !shadow-$bew-shadow-1";
   }
 }
 
