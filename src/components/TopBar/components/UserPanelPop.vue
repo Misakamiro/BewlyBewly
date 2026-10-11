@@ -6,6 +6,7 @@ import { settings } from '~/logic'
 import api from '~/utils/api'
 import { revokeAccessKey } from '~/utils/authProvider'
 import { numFormatter } from '~/utils/dataFormatter'
+import { getLevelProgressWidth } from '~/utils/levelProgress'
 import { LV0_ICON, LV1_ICON, LV2_ICON, LV3_ICON, LV4_ICON, LV5_ICON, LV6_ICON, LV6_LIGHTNING_ICON } from '~/utils/lvIcons'
 import { getCSRF, getUserID, isHomePage } from '~/utils/main'
 
@@ -67,12 +68,7 @@ const otherLinks = computed((): { name: string, url: string, icon: string }[] =>
   ]
 })
 
-const levelProgressBarWidth = computed(() => {
-  const { next_exp: nextExp, current_exp: currentExp } = props.userInfo.level_info
-
-  const percentage = (currentExp / nextExp) * 100
-  return `${percentage.toFixed(2)}%`
-})
+const levelProgressBarWidth = computed(() => getLevelProgressWidth(props.userInfo.level_info))
 
 const userStat = reactive<UserStat>({} as UserStat)
 
