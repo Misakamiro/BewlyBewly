@@ -56,6 +56,12 @@ function initPageAction() {
   }
 
   handleReachBottom.value = async () => {
+    // 原先没有任何 guard:列表已到底或首屏全量下载还在进行时,依然会被反复触发。
+    // 加上与本项目其他列表视图一致的两道判断,只跳过明显多余的调用,不改变数据流。
+    if (isLoading.value)
+      return
+    if (noMoreContent.value)
+      return
     getData()
   }
 }
@@ -319,6 +325,12 @@ function handleMouseEnter(item: VideoItem) {
             m="-t-4"
           />
         </Transition>
+        <!-- no more content -->
+        <Empty
+          v-if="noMoreContent && currentWatchLaterList.length > 0"
+          class="pb-4"
+          :description="t('common.no_more_content')"
+        />
       </template>
     </main>
 

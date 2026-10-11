@@ -53,10 +53,11 @@ function initPageAction() {
   }
 
   handlePageRefresh.value = () => {
-    historyList.length = 0
-    currentPageNum.value = 1
-    noMoreContent.value = false
-    getHistoryList()
+    // 与 Favorites 的刷新保持一致的语义:重新执行**当前**查询条件。
+    // 原先不管是否处于搜索态都调用 getHistoryList(),而 keyword 仍留在搜索框里,
+    // 结果就成了"搜索框显示关键词、列表却是未过滤历史"的自相矛盾状态。
+    // handleSearch 内部会重置列表/页码/noMoreContent,并区分搜索与游标模式。
+    handleSearch()
   }
 }
 

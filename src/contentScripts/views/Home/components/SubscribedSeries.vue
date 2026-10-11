@@ -85,8 +85,6 @@ function initPageAction() {
   handlePageRefresh.value = async () => {
     if (isLoading.value)
       return
-    if (isLoading.value)
-      return
     initData()
   }
 }
