@@ -33,6 +33,12 @@ onMounted(() => {
   initPageAction()
 })
 
+// 视图被 KeepAlive 缓存后 onMounted 只会执行一次,而 handleReachBottom /
+// handlePageRefresh 是所有视图共用的 ref,必须在每次激活时重新指向本视图
+onActivated(() => {
+  initPageAction()
+})
+
 function initPageAction() {
   handleReachBottom.value = () => {
     if (isLoadingRecommendAnime.value)

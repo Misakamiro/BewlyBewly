@@ -120,7 +120,18 @@ const showTopBar = computed((): boolean => {
     || !isHomePage()
 })
 
+// 缓存最近访问过的视图:切回已加载过的页面不再重新请求,已加载的分页与筛选状态得以保留。
+// 用 max 限制缓存数量 —— 列表视图(首页推荐可达数百张卡片)同时在内存里驻留会明显抬高
+// 占用,本项目此前做过内存相关调查,所以不放开为无上限缓存。
+const MAX_KEPT_ALIVE_PAGES = 3
+
 const isFirstTimeActivatedPageChange = ref<boolean>(true)
+// 视图切换时把滚动位置归零(原有行为,保持不变)。
+// 没有一并做"每个页面各自记住滚动位置":所有视图共用同一个滚动容器,而切换过程中网格
+// 会因为封面图回到懒加载占位而先塌再长,读写 scrollTop 的时机极难把握 —— 实测把 1200
+// 恢复成了 829,且按帧重试 2 秒也没能纠正(保存侧读到的是已经塌陷后的值)。
+// KeepAlive 已经保住了"切回不重新请求",滚动恢复需要单独方案(例如在 os-scroll 里
+// 持续跟踪位置,并在恢复期间暂停跟踪),不该在没验证的情况下硬塞进来。
 watch(
   () => activatedPage.value,
   () => {
@@ -409,7 +420,9 @@ provide<BewlyAppProvider>('BEWLY_APP', {
                 w="lg:[calc(100%-200px)] [calc(100%-150px)]"
               >
                 <Transition name="page-fade">
-                  <Component :is="pages[activatedPage]" />
+                  <KeepAlive :max="MAX_KEPT_ALIVE_PAGES">
+                    <Component :is="pages[activatedPage]" :key="activatedPage" />
+                  </KeepAlive>
                 </Transition>
               </div>
             </main>
