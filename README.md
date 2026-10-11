@@ -49,7 +49,8 @@ Firefox 使用 `corepack pnpm build-firefox`(产物在 `extension-firefox/`)。�
 
 | 版本 | 类型 | 摘要 |
 | --- | --- | --- |
-| **0.41.16** | 改进 | 切回已访问页面不再重新请求;后台请求加超时;清理死代码 |
+| **0.41.17** | 隐私 | 图标改为构建期内联,不再请求第三方 Iconify API |
+| 0.41.16 | 改进 | 切回已访问页面不再重新请求;后台请求加超时;清理死代码 |
 | 0.41.15 | 修复 | 用户面板等级经验条进度算错;依赖漏洞清理 |
 | 0.41.14 | 修复 | 主页顶栏与壁纸之间的横向断层(根因修复) |
 | 0.41.13 | — | 仅内部撤回,未发布(见下方说明) |
@@ -64,6 +65,11 @@ Firefox 使用 `corepack pnpm build-firefox`(产物在 `extension-firefox/`)。�
 | 0.41.4 | 重构 | 后台消息监听直接注册;移除 webext-bridge 运行时依赖 |
 | 0.41.3 | 安全 | 容器 Cookie 仅限 B 站域、发送者/origin 校验、权限收敛 |
 | 0.41.2 | 修复 | 首页推荐迁移到现行 WBI V8 接口;过滤广告与不完整卡片 |
+
+### 0.41.17
+
+- **图标不再向第三方请求**:有 5 个组件用 `@iconify/vue` 的组件按字符串图标名渲染,而该组件对本地未注册的图标会去 `api.iconify.design` 拉取。实测每次加载主页会产生 2 个这类请求(坞栏的主题切换图标与回到顶部箭头),把浏览行为暴露给一个 manifest 里并未声明的第三方域名。现在改用本项目自己一贯的 UnoCSS 图标类(`i-line-md:*`),由 `presetIcons` 在构建期从本地 `@iconify/json` 解析并内联进 `style.css`。
+- 顺带移除 `@iconify/vue`:它是以 devDependency 身份被打进产物的运行时依赖(`pnpm audit --prod` 覆盖不到),移除后内容脚本产物里已不含 Iconify API 客户端代码。
 
 ### 0.41.16
 
@@ -95,8 +101,7 @@ Firefox 使用 `corepack pnpm build-firefox`(产物在 `extension-firefox/`)。�
 | --- | --- |
 | 新增权限 | `https://bsbsb.top/*` — 仅在开启推广标记/自动跳过时使用,匿名请求 |
 | 移除权限 | `tabs`;`webRequest` 仅在 Firefox 构建中保留(多账户容器场景需要) |
-| 第三方请求 | 开启推广功能时,视频页会把 BV 号匿名 GET 到 bsbsb.top;两个开关都关闭时不产生任何请求 |
-| 已知遗留 | `@iconify/vue` 的字符串图标会在运行时请求 `api.iconify.design`,该域名未在 manifest 中声明(上游遗留) |
+| 第三方请求 | 开启推广功能时,视频页会把 BV 号匿名 GET 到 bsbsb.top;两个开关都关闭时不产生任何请求。图标全部在构建期内联进 `style.css`,运行时不请求任何第三方图标服务 |
 
 ## 🧪 开发
 
