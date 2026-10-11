@@ -113,9 +113,6 @@ export async function getManifest() {
         },
   }
 
-  if (isDev)
-    manifest.permissions?.push('webNavigation')
-
   if (isFirefox) {
     manifest.browser_specific_settings = {
       gecko: {

@@ -23,16 +23,6 @@ import { updateInterval } from './notify'
 import OldUserPanelPop from './oldTopBarComponents/OldUserPanelPop.vue'
 import type { UnReadDm, UnReadMessage, UserInfo } from './types'
 
-// import { useTopBarStore } from '~/stores/topBarStore'
-
-// const popups = { NotificationsPop, MomentsPop, FavoritesPop, HistoryPop }
-
-// const topBarStore = useTopBarStore()
-
-// const topBarItems = computed(() => {
-//   return topBarStore.topBarItems
-// })
-
 const { activatedPage, scrollbarRef, reachTop } = useBewlyApp()
 
 const mid = getUserID() || ''

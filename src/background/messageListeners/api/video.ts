@@ -85,23 +85,6 @@ const API_VIDEO = {
     },
     afterHandle: AHS.J_D,
   },
-  // https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/comment/list.md#%E8%8E%B7%E5%8F%96%E8%AF%84%E8%AE%BA%E5%8C%BA%E6%98%8E%E7%BB%86_%E7%BF%BB%E9%A1%B5%E5%8A%A0%E8%BD%BD
-  getVideoComments: {
-    url: 'https://api.bilibili.com/x/v2/reply',
-    _fetch: {
-      method: 'get',
-    },
-    params: {
-      csrf: '',
-      type: 1,
-      oid: 0,
-      sort: 0,
-      nohot: 0,
-      pn: 1,
-      ps: 20,
-    },
-    afterHandle: AHS.J_D,
-  },
   // https://github.com/SocialSisterYi/bilibili-API-collect/blob/def57d7a70ed1f39080069ba0f40648ce6ce2b90/docs/video_ranking/popular.md#%E8%8E%B7%E5%8F%96%E5%BD%93%E5%89%8D%E7%83%AD%E9%97%A8%E8%A7%86%E9%A2%91%E5%88%97%E8%A1%A8
   getPopularVideos: {
     url: 'https://api.bilibili.com/x/web-interface/popular',

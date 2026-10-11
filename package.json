@@ -18,7 +18,6 @@
     "build-safari": "cross-env NODE_ENV=production SAFARI=true run-s clear-safari build:prepare build:js build:bg",
     "build-firefox": "cross-env NODE_ENV=production FIREFOX=true run-s clear-firefox build:prepare build:js build:bg",
     "build:prepare": "esno scripts/prepare.ts",
-    "build:web": "vite build",
     "build:js": "vite build --config vite.config.content.ts",
     "build:bg": "tsup",
     "convert-safari": "xcrun safari-web-extension-converter ./extension-safari --project-location ./extension-safari-macos --macos-only",

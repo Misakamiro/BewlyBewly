@@ -53,16 +53,6 @@ const API_ANIME = {
     },
     afterHandle: AHS.J_D,
   },
-  getAnimeDetail: {
-    url: 'https://api.bilibili.com/pgc/view/web/season',
-    _fetch: {
-      method: 'get',
-    },
-    params: {
-      // ep_id: '234406',
-    },
-    afterHandle: AHS.J_D,
-  },
 } satisfies APIMAP
 
 export default API_ANIME
