@@ -59,7 +59,7 @@ export function MV3Hmr(): PluginOption {
 
         if (urlModule?.url) {
           code = code
-            .replace(/\/@vite\/client/g, '/dist/mv3client.mjs')
+            .replace(/\/@vite\/client/g, '/dist/mv3client.js')
             .replace(/\/@id\//g, '/')
             .replace(/__uno.css/g, '~~uno.css')
             .replace(/__x00__plugin-vue:export-helper/g, '~~x00__plugin-vue:export-helper.js')

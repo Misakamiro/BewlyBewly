@@ -9,7 +9,11 @@ console.debug('[vite] connecting...')
 
 // use server configuration, then fallback to inference
 const socketProtocol = location.protocol === 'https:' ? 'wss' : 'ws'
-const socketHost = 'localhost:3303'
+// 端口在构建时由 tsup 的 define 注入(见 tsup.config.ts / scripts/utils.ts),
+// 与 Vite dev server 使用同一个值。这里不能 import node:process —— 该表达式在
+// 打包前就被替换成字面量,引入 node 模块反而会污染浏览器端产物。
+// eslint-disable-next-line node/prefer-global/process
+const socketHost = `localhost:${process.env.PORT}`
 const base = '/'
 const messageBuffer: string[] = []
 const enableOverlay = true

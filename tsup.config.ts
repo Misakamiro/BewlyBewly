@@ -3,7 +3,7 @@ import path from 'node:path'
 import fs from 'fs-extra'
 import { defineConfig } from 'tsup'
 
-import { isDev, isFirefox, isSafari } from './scripts/utils'
+import { isDev, isFirefox, isSafari, port } from './scripts/utils'
 
 const outDir = isFirefox ? 'extension-firefox/dist' : isSafari ? 'extension-safari/dist' : 'extension/dist'
 
@@ -25,6 +25,9 @@ export default defineConfig(() => ({
     '__DEV__': JSON.stringify(isDev),
     'process.env.NODE_ENV': JSON.stringify(isDev ? 'development' : 'production'),
     'process.env.FIREFOX': isFirefox ? 'true' : 'false',
+    // dev HMR 客户端要连回 Vite dev server,端口由 scripts/utils.ts 统一决定
+    // (PORT 环境变量优先),不能在 client.ts 里再硬编码一份
+    'process.env.PORT': JSON.stringify(String(port)),
   },
   platform: 'browser',
   minifyWhitespace: !isDev,
