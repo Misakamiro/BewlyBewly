@@ -73,6 +73,21 @@ export function cloneHeaders(headers?: Record<string, any>): Record<string, any>
   return { ...(headers ?? {}) }
 }
 
+// 后台代理请求的统一超时(毫秒)。B 站接口正常在 1-2 秒内返回,超过这个时间基本
+// 可以认定卡死;继续等只会让调用方的 promise 永久 pending、页面加载态一直转。
+export const REQUEST_TIMEOUT_MS = 15000
+
+/**
+ * 生成超时信号。`AbortSignal.timeout` 在目标环境(Chrome 103+ / Firefox 100+ /
+ * Safari 16+)均可用;万一环境不支持则返回 undefined,请求行为退回改动前(不设超时),
+ * 而不是让请求直接失败。
+ */
+export function createTimeoutSignal(ms: number): AbortSignal | undefined {
+  if (typeof AbortSignal === 'undefined' || typeof AbortSignal.timeout !== 'function')
+    return undefined
+  return AbortSignal.timeout(ms)
+}
+
 export interface WebRequestHeader {
   name: string
   value?: string
@@ -169,8 +184,12 @@ function apiListenerFactory(API_MAP: APIMAP) {
       return
     }
     const contentScriptQuery = message.contentScriptQuery
-    // 检测是否有contentScriptQuery
-    if (!contentScriptQuery || !API_MAP[contentScriptQuery])
+    // 没有 contentScriptQuery 的消息不是发给 API 代理的:tabs.ts 的监听器挂在同一个
+    // runtime.onMessage 上,"在后台打开链接"的消息同样会打到这里,静默忽略即可。
+    // 只有"带了查询名但查不到"才是真异常,需要报错。
+    if (!contentScriptQuery)
+      return
+    if (!API_MAP[contentScriptQuery])
       return console.error(`Cannot find this contentScriptQuery: ${contentScriptQuery}`)
     if (API_MAP[contentScriptQuery] instanceof Function)
       return (API_MAP[contentScriptQuery] as APIFunction)(message, sender, sendResponse)
@@ -225,8 +244,11 @@ function doRequest(message: Message, api: API, sendResponse?: Function, cookies?
       headers['firefox-multi-account-cookie'] = cookieStr
     }
     // get cant take body
-    const fetchOpt = { method, headers }
+    const fetchOpt: { method: string, headers: Record<string, any>, body?: any, signal?: AbortSignal } = { method, headers }
     !isGET && Object.assign(fetchOpt, { body: targetBody })
+    const signal = createTimeoutSignal(REQUEST_TIMEOUT_MS)
+    if (signal)
+      fetchOpt.signal = signal
     // fetch and after handle
     let baseFunc = fetch(url, {
       ...fetchOpt,
@@ -238,7 +260,11 @@ function doRequest(message: Message, api: API, sendResponse?: Function, cookies?
       else
         baseFunc = baseFunc.then(func)
     })
-    baseFunc.catch(console.error)
+    // 单独挂一份 catch 只用于记录日志(带上请求目标,便于区分是哪个接口卡了);
+    // 返回值仍是原 promise,调用方照旧拿到 rejection
+    baseFunc.catch((error: unknown) => {
+      console.error(`[BewlyBewly] 后台请求失败(${method} ${url}):`, error)
+    })
     return baseFunc
   }
   catch (e) {
