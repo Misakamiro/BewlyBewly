@@ -67,6 +67,16 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: pnpm run knip
 
+      # 生产依赖漏洞门禁(此前完全没有,导致 2026-09 记录的"0 漏洞"悄悄退化).
+      # --audit-level=critical 是刻意选择:当前有且仅有 1 个已接受的 high ——
+      # @vue/server-renderer <3.5.42 (GHSA-g2v6-rqmx-r4w6). 它只是 vue 的传递依赖(SSR 包),
+      # 本扩展不做服务端渲染,已确认其入口(renderToString / ssrRenderAttrs 等)不在任何
+      # 构建产物中,也没有任何源码 import 它;修掉它必须把 vue 升到 3.5.x,代价是重跑全量
+      # 真实浏览器验证. 升级 Vue 到 >=3.5.42 后,把这里收紧为 --audit-level=high.
+      - name: Audit production dependencies
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: pnpm audit --prod --audit-level=critical
+
       - name: Build Extension
         run: pnpm build
 
