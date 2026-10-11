@@ -49,7 +49,6 @@ const isLoading = ref<boolean>(false)
 const needToLoginFirst = ref<boolean>(false)
 const containerRef = ref<HTMLElement>() as Ref<HTMLElement>
 const offset = ref<string>('')
-const updateBaseline = ref<string>('')
 const noMoreContent = ref<boolean>(false)
 const { handleReachBottom, handlePageRefresh, haveScrollbar } = useBewlyApp()
 
@@ -81,7 +80,6 @@ function initPageAction() {
 
 async function initData() {
   offset.value = ''
-  updateBaseline.value = ''
   liveVideoList.value.length = 0
   livePage.value = 1
   videoList.value.length = 0
@@ -179,11 +177,14 @@ async function getFollowedUsersVideos() {
     let lastVideoListLength = videoList.value.length
     videoList.value.push(...pendingVideos)
 
-    const response: MomentResult = await api.moment.getMoments({
-      type: 'video',
-      offset: Number(offset.value),
-      update_baseline: updateBaseline.value,
-    })
+    const response: MomentResult = await api.moment.getMoments(
+      offset.value
+        // 翻页:用响应返回的 offset 原样续传。它是 19 位字符串,
+        // 之前的 Number() 转换会丢精度(超出 JS 安全整数范围),导致续页参数被篡改
+        ? { type: 'video', offset: offset.value }
+        // 首屏:必须带 page。offset=0 + 空 update_baseline 会被风控拒绝(4101133)
+        : { type: 'video', page: 1 },
+    )
 
     if (response.code === -101) {
       noMoreContent.value = true
@@ -193,7 +194,6 @@ async function getFollowedUsersVideos() {
 
     if (response.code === 0) {
       offset.value = response.data.offset
-      updateBaseline.value = response.data.update_baseline
 
       const resData = [] as MomentItem[]
 
@@ -249,8 +249,10 @@ async function getFollowedUsersVideos() {
         getFollowedUsersVideos()
       }
     }
-    else if (response.code === -101) {
-      needToLoginFirst.value = true
+    else {
+      // 原先只处理 code === 0 与 -101,其它错误码被静默当成"没有内容":
+      // 接口被风控拒绝时就只显示一个空列表,连排查线索都没有。至少留下日志。
+      console.warn(`[BewlyBewly] 动态接口返回异常码 ${response.code}(type=video),可能是接口变更或风控拦截`)
     }
   }
   finally {

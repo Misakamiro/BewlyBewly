@@ -38,10 +38,17 @@ const API_MOMENT = {
     _fetch: {
       method: 'get',
     },
+    // 这里刻意不给 offset / update_baseline 任何"看起来像真值"的默认:
+    // 首屏必须带 page,而 "offset=0 且 update_baseline 为空" 这种老式形状会被风控直接
+    // 拒绝(HTTP 200 + code 4101133,data 为 undefined)。调用方按需传:
+    //   首屏 -> page: 1
+    //   翻页 -> offset: <响应返回的字符串>
+    // 这两个键保留下来只为类型提示;默认值必须是 undefined,serializeParams 会跳过它,
+    // 否则又会被当成真实查询参数发出去。
     params: {
       type: 'all',
-      offset: 0,
-      update_baseline: '',
+      page: undefined as number | undefined,
+      offset: undefined as string | undefined,
     },
     afterHandle: AHS.J_D,
   },
