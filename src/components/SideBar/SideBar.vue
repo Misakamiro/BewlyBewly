@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { Icon } from '@iconify/vue'
-
 import { useDark } from '~/composables/useDark'
 import { useDelayedHover } from '~/composables/useDelayedHover'
 import { settings } from '~/logic'
@@ -89,14 +87,14 @@ function toggleHideSidebar(hide: boolean) {
         >
           <Transition name="fade">
             <div v-show="hoveringDockItem.themeMode" absolute flex>
-              <Icon v-if="isDark" icon="line-md:sunny-outline-to-moon-loop-transition" />
-              <Icon v-else icon="line-md:moon-alt-to-sunny-outline-loop-transition" />
+              <div v-if="isDark" i-line-md:sunny-outline-to-moon-loop-transition />
+              <div v-else i-line-md:moon-alt-to-sunny-outline-loop-transition />
             </div>
           </Transition>
           <Transition name="fade">
             <div v-show="!hoveringDockItem.themeMode" absolute flex>
-              <Icon v-if="isDark" icon="line-md:sunny-outline-to-moon-transition" />
-              <Icon v-else icon="line-md:moon-to-sunny-outline-transition" />
+              <div v-if="isDark" i-line-md:sunny-outline-to-moon-transition />
+              <div v-else i-line-md:moon-to-sunny-outline-transition />
             </div>
           </Transition>
         </Button>

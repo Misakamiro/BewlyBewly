@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { Icon } from '@iconify/vue'
 import type { CSSProperties } from 'vue'
 import { useToast } from 'vue-toastification'
 
@@ -407,7 +406,7 @@ provide('getVideoType', () => props.type!)
                   <div i-mingcute:carplay-line />
                 </Tooltip>
                 <Tooltip v-else :content="$t('common.added')" placement="bottom-right" type="dark">
-                  <Icon icon="line-md:confirm" />
+                  <div i-line-md:confirm />
                 </Tooltip>
               </button>
             </template>

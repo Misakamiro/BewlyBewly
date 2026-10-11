@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { Icon } from '@iconify/vue'
 import { onKeyStroke } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'vue-toastification'
@@ -125,8 +124,8 @@ onKeyStroke((e: KeyboardEvent) => {
           </div>
           {{ reason.name }}
         </div>
-        <Icon
-          v-if="selectedDislikeReason === reason.id" icon="line-md:confirm"
+        <div
+          v-if="selectedDislikeReason === reason.id" i-line-md:confirm
           w-18px h-18px
         />
       </li>

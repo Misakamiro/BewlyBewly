@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from '@iconify/vue'
 import { useElementSize, useWindowSize } from '@vueuse/core'
 import { computed, ref } from 'vue'
 
@@ -312,14 +311,14 @@ const dockTransformStyle = computed((): { transform: string, transformOrigin: st
           >
             <Transition name="fade">
               <div v-show="hoveringDockItem.themeMode" absolute>
-                <Icon v-if="isDark" icon="line-md:sunny-outline-to-moon-loop-transition" />
-                <Icon v-else icon="line-md:moon-alt-to-sunny-outline-loop-transition" />
+                <div v-if="isDark" i-line-md:sunny-outline-to-moon-loop-transition />
+                <div v-else i-line-md:moon-alt-to-sunny-outline-loop-transition />
               </div>
             </Transition>
             <Transition name="fade">
               <div v-show="!hoveringDockItem.themeMode" absolute>
-                <Icon v-if="isDark" icon="line-md:sunny-outline-to-moon-transition" />
-                <Icon v-else icon="line-md:moon-to-sunny-outline-transition" />
+                <div v-if="isDark" i-line-md:sunny-outline-to-moon-transition />
+                <div v-else i-line-md:moon-to-sunny-outline-transition />
               </div>
             </Transition>
           </button>
@@ -363,14 +362,14 @@ const dockTransformStyle = computed((): { transform: string, transformOrigin: st
                 }"
                 @click="handleBackToTopOrRefresh(key === 1 ? 'refresh' : 'backToTop')"
               >
-                <Icon
+                <div
                   v-if="key === 1"
-                  icon="line-md:rotate-270"
+                  i-line-md:rotate-270
                   shrink-0 rotate-90 absolute text-2xl
                 />
-                <Icon
+                <div
                   v-else
-                  icon="line-md:arrow-small-up"
+                  i-line-md:arrow-small-up
                   shrink-0 absolute text-2xl
                 />
               </button>
@@ -386,14 +385,14 @@ const dockTransformStyle = computed((): { transform: string, transformOrigin: st
             @click="handleBackToTopOrRefresh('auto')"
           >
             <Transition name="fade">
-              <Icon
+              <div
                 v-if="reachTop"
-                icon="line-md:rotate-270"
+                i-line-md:rotate-270
                 shrink-0 rotate-90 absolute text-2xl
               />
-              <Icon
+              <div
                 v-else
-                icon="line-md:arrow-small-up"
+                i-line-md:arrow-small-up
                 shrink-0 absolute text-2xl
               />
             </Transition>

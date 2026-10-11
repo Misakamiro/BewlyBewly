@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from '@iconify/vue'
 import { useI18n } from 'vue-i18n'
 
 import Empty from '~/components/Empty.vue'
@@ -439,7 +438,7 @@ defineExpose({
                   <div i-mingcute:carplay-line />
                 </Tooltip>
                 <Tooltip v-else :content="$t('common.added')" placement="bottom" type="dark">
-                  <Icon icon="line-md:confirm" />
+                  <div i-line-md:confirm />
                 </Tooltip>
               </div>
             </div>
