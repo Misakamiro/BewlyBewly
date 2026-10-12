@@ -265,6 +265,17 @@ function doRequest(message: Message, api: API, sendResponse?: Function, cookies?
     baseFunc.catch((error: unknown) => {
       console.error(`[BewlyBewly] 后台请求失败(${method} ${url}):`, error)
     })
+    // 统一的可诊断日志:接口返回非 0 码时留一条痕迹。
+    // 背景:「正在关注 / 订阅剧集」曾因非 0 码(风控 4101133)被各视图静默当成空列表,
+    // 坏了很久都没人发现(见 0.41.18)。这里同样只观察、不改变返回值,
+    // 一处覆盖所有走后台代理的接口。-101 是正常的未登录态,不刷日志。
+    baseFunc.then((data: unknown) => {
+      const code = data && typeof data === 'object' ? (data as { code?: unknown }).code : undefined
+      if (typeof code === 'number' && code !== 0 && code !== -101)
+        console.warn(`[BewlyBewly] 后台请求返回异常码 ${code}(${method} ${url})`)
+    }).catch(() => {
+      // 失败路径已由上面的 catch 记录
+    })
     return baseFunc
   }
   catch (e) {

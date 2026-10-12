@@ -4,6 +4,7 @@ import {
   apiListenerFactory,
   createTimeoutSignal,
   REQUEST_TIMEOUT_MS,
+  toJsonHandler,
 } from '~/background/utils'
 
 vi.mock('webextension-polyfill', () => {
@@ -52,5 +53,46 @@ describe('background request timeout wiring', () => {
     expect(init?.signal).toBeInstanceOf(AbortSignal)
 
     vi.unstubAllGlobals()
+  })
+})
+
+// 「正在关注 / 订阅剧集」曾因接口返回非 0 码(风控 4101133)被静默当成空列表,
+// 坏了很久都没人发现。后台代理现在统一观察响应码并留痕;这组测试锁住该行为,
+// 同时确认它不改变返回值。
+describe('unexpected api code logging', () => {
+  async function runWithCode(code: number) {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: true, json: async () => ({ code }) }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const apiMap = {
+      ping: {
+        url: 'https://api.bilibili.com/x/test',
+        _fetch: { method: 'GET' },
+        afterHandle: [toJsonHandler],
+      },
+    }
+
+    const listener = apiListenerFactory(apiMap)
+    const result = await listener({ contentScriptQuery: 'ping' })
+
+    const warnings = warn.mock.calls.map(call => String(call[0]))
+    warn.mockRestore()
+    vi.unstubAllGlobals()
+    return { result, warnings }
+  }
+
+  it('warns when an endpoint returns an unexpected code, without touching the result', async () => {
+    const { result, warnings } = await runWithCode(4101133)
+
+    expect(result).toEqual({ code: 4101133 })
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain('4101133')
+    expect(warnings[0]).toContain('/x/test')
+  })
+
+  it('stays silent for a healthy response and for the normal not-logged-in code', async () => {
+    expect((await runWithCode(0)).warnings).toHaveLength(0)
+    expect((await runWithCode(-101)).warnings).toHaveLength(0)
   })
 })

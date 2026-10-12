@@ -146,9 +146,7 @@ async function getFollowedUsersVideos() {
       }
     }
     else {
-      // 原先只处理 code === 0 与 -101,其它错误码被静默当成"没有内容":
-      // 接口被风控拒绝时就只显示一个空列表,连排查线索都没有。至少留下日志。
-      console.warn(`[BewlyBewly] 动态接口返回异常码 ${response.code}(type=pgc),可能是接口变更或风控拦截`)
+      // 非 0 码的可诊断日志由后台代理统一记录(见 background/utils.ts doRequest)
     }
   }
   finally {
