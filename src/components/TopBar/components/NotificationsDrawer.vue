@@ -2,6 +2,7 @@
 import { onKeyStroke } from '@vueuse/core'
 
 import { useBewlyApp } from '~/composables/useAppProvider'
+import { useDrawerIframeLifecycle } from '~/composables/useDrawerIframeLifecycle'
 import { settings } from '~/logic'
 
 // TODO: support shortcuts like `Ctrl+Alt+T` to open in new tab, `Esc` to close
@@ -19,7 +20,11 @@ const { mainAppRef } = useBewlyApp()
 const show = ref(false)
 const iframeRef = ref<HTMLIFrameElement | null>(null)
 const currentUrl = ref<string>(props.url || 'https://message.bilibili.com/')
-const showIframe = ref(false)
+// iframe 何时挂载由 useDrawerIframeLifecycle 管理(关闭即卸载,下次打开重新加载新文档)。
+// 抽屉本身被 TopBar 的 <KeepAlive> 缓存,组件不会卸载;若 iframe 用 v-show 常驻,
+// message.bilibili.com 的文档就会一直活到标签页结束,开久后其内部会话/连接失效,
+// 再打开就是「加载失败」—— 详见该 composable 的注释与单测。
+const { iframeMounted: showIframe, open: openIframe, close: closeIframe } = useDrawerIframeLifecycle()
 const delayCloseTimer = ref<NodeJS.Timeout | null>(null)
 
 onMounted(() => {
@@ -37,6 +42,8 @@ function handleOpen() {
     currentUrl.value = props.url
     beforeUrl.value = props.url
   }
+  // 重新挂载 iframe(关闭时已卸载),从而拿到全新文档
+  openIframe()
   nextTick(() => {
     iframeRef.value?.focus()
   })
@@ -50,7 +57,8 @@ async function handleClose() {
   if (delayCloseTimer.value) {
     clearTimeout(delayCloseTimer.value)
   }
-  // await releaseIframeResources()
+  // 卸载消息页文档,避免陈旧会话被长期复用
+  closeIframe()
   show.value = false
   delayCloseTimer.value = setTimeout(() => {
     emit('close')
@@ -58,17 +66,23 @@ async function handleClose() {
 }
 
 async function releaseIframeResources() {
-  // Clear iframe content
-  currentUrl.value = 'about:blank'
-  /**
-   * eg: When use 'iframeRef.value?.contentWindow?.document' of t.bilibili.com iframe on bilibili.com, there may be cross domain issues
-   * set the src to 'about:blank' to avoid this issue, it also can release the memory
-   */
+  // 只做样式表卸载善后(组件 onBeforeUnmount 时兜底),不要改 currentUrl ——
+  // 下一次打开要重新加载消息页,改掉它会让 iframe 打开即 about:blank。
   if (iframeRef.value) {
-    iframeRef.value.src = 'about:blank'
+    try {
+      iframeRef.value.src = 'about:blank'
+    }
+    catch {
+      // 文档已卸载时忽略
+    }
   }
   await nextTick()
-  iframeRef.value?.contentWindow?.close()
+  try {
+    iframeRef.value?.contentWindow?.close()
+  }
+  catch {
+    // 跨域或文档已卸载时忽略
+  }
 
   // Remove iframe from the DOM
   iframeRef.value?.parentNode?.removeChild(iframeRef.value)
@@ -221,16 +235,16 @@ nextTick(() => {
           </Transition>
 
           <Transition name="fade">
-            <!-- Iframe -->
+            <!-- Iframe: 用 v-if 而非 v-show,关闭即卸载文档(见 showIframe 的说明) -->
             <iframe
-              v-show="showIframe"
+              v-if="showIframe"
               ref="iframeRef"
               :src="currentUrl"
               frameborder="0"
               pointer-events-auto
               pos="relative right-0"
               w-inherit
-              max-w-inherit h-full @load="showIframe = true"
+              max-w-inherit h-full
             />
           </Transition>
         </div>
