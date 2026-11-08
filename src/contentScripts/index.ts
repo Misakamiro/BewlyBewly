@@ -164,21 +164,21 @@ window.addEventListener(BEWLY_MOUNTED, () => {
   releaseRemoveOriginalTopBar()
 })
 
-// Set the original Bilibili top bar to `display: none` to prevent it from showing before the load
-// see: https://github.com/BewlyBewly/BewlyBewly/issues/967
+// 原生顶栏的「提前隐藏」不再由这里注入内联样式完成 —— 它写在 style.css 里
+// (styles/removeTopBar.scss 的 `html:not(.bewly-topbar-ready)` 规则),由 manifest 的
+// content_scripts.css 在 document_start 就应用,不依赖这 ~1MB 脚本执行完。
+// 这里只负责在合适的时机给 <html> 加上 .bewly-topbar-ready 解除隐藏。
 //
-// 撤除时机很关键:此前在 DOMContentLoaded 就移除,而非首页的 app 是 `injectAppWhenIdle()`
-// 延迟注入的,于是"原生顶栏已放出来、Bewly 顶栏还没挂载"之间会出现一个空窗期 ——
-// 用户看到的正是"打开视频页一瞬间顶栏没被美化,过一会才出现"。现已改为等 app 真正挂载
-// (BEWLY_MOUNTED,与首页 beforeLoadedStyleEl 用同一个信号)后再撤除。
-// iframe 内不显示 Bewly 顶栏,仍按原逻辑在 DOMContentLoaded 撤除,否则会把 iframe 的原生顶栏永久藏掉。
-const removeOriginalTopBar = injectCSS(`.bili-header, #biliMainHeader { visibility: hidden !important; }`)
+// 释放时机:非 iframe 页面等 app 真正挂载(BEWLY_MOUNTED);iframe 内不显示 Bewly 顶栏,
+// 在 DOMContentLoaded 就释放。另有 8s JS 兜底(见 onDOMLoaded),CSS 侧还有 6s 动画兜底。
+// see: https://github.com/BewlyBewly/BewlyBewly/issues/967
+const EARLY_HIDE_READY_CLASS = 'bewly-topbar-ready'
 let removeOriginalTopBarReleased = false
 function releaseRemoveOriginalTopBar() {
-  if (removeOriginalTopBarReleased || !removeOriginalTopBar)
+  if (removeOriginalTopBarReleased)
     return
   removeOriginalTopBarReleased = true
-  removeOriginalTopBar.remove()
+  document.documentElement.classList.add(EARLY_HIDE_READY_CLASS)
 }
 
 async function onDOMLoaded() {
@@ -222,14 +222,15 @@ async function onDOMLoaded() {
     }
   }
 
-  // Reset the original Bilibili top bar display style.
-  // 非 iframe 页面改为等 app 挂载(BEWLY_MOUNTED)后再撤除,见 releaseRemoveOriginalTopBar 上方的说明;
-  // iframe 内没有 Bewly 顶栏,立即撤除以免原生顶栏被永久隐藏。
+  // 解除原生顶栏的提前隐藏(见 releaseRemoveOriginalTopBar 上方说明)。
+  // 非 iframe 页面等 app 挂载(BEWLY_MOUNTED)后再解除;iframe 内没有 Bewly 顶栏,
+  // 这里立即解除,否则会把 iframe 的原生顶栏一起藏掉。
   if (isInIframe()) {
     releaseRemoveOriginalTopBar()
   }
   else {
-    // 安全兜底:若 app 因故没能挂载(脚本异常/被页面破坏),也不能让原生顶栏一直藏着。
+    // JS 兜底:若 app 因故没能挂载(脚本异常/被页面破坏),也要让原生顶栏恢复。
+    // (CSS 侧 styles/removeTopBar.scss 还有 6s 动画兜底,两层互不依赖。)
     setTimeout(releaseRemoveOriginalTopBar, 8000)
   }
 }

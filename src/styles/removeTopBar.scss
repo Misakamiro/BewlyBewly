@@ -1,3 +1,38 @@
+// ---------------------------------------------------------------------------
+// 在 content script 执行之前就遮住原生顶栏。
+//
+// 背景:打开视频页时会先露出约一两秒的原生 B 站顶栏,然后才被 Bewly 顶栏替换。
+// 根因是此前唯一的遮挡手段是 index.global.js 里 injectCSS() 注入的内联样式 ——
+// 它要等 ~1MB 的脚本下载、解析、执行到那一行才生效;在此之前 .bili-header__bar
+// 完全没有遮挡。内容脚本执行稍慢于 B 站渲染原生顶栏时,就会看到原生顶栏。
+//
+// 修法关键:**默认隐藏、由 JS 解除**,而不是「由 JS 隐藏」:
+//   - 规则写在 style.css 里,而 style.css 由 manifest 以 content_scripts.css 注入,
+//     浏览器在 document_start 就应用它,与 JS 执行无关;
+//   - 内容脚本到达释放点时给 <html> 加 .bewly-topbar-ready(见 contentScripts/index.ts),
+//     本规则随即失效,之后由 .remove-top-bar 等既有规则接管。
+//
+// 末尾的 6s 动画是纯 CSS 兜底:万一内容脚本始终没执行,也要让原生顶栏恢复,
+// 避免页面永久缺一块顶栏。**这里不能用 !important** —— 动画无法覆盖 !important,
+// 用了兜底就失效。
+// ---------------------------------------------------------------------------
+html:not(.bewly-topbar-ready) {
+  .bili-header,
+  .bili-header__bar,
+  .bili-header__menu,
+  #biliMainHeader,
+  #bili-header-container {
+    visibility: hidden;
+    animation: bewly-reveal-native-top-bar 0s linear 6s forwards;
+  }
+}
+
+@keyframes bewly-reveal-native-top-bar {
+  to {
+    visibility: visible;
+  }
+}
+
 .remove-top-bar {
   // remove the original top bar and adjust the height of the top bar to match the bewly top bar
   .bili-header .bili-header__bar,
