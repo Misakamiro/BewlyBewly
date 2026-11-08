@@ -160,11 +160,26 @@ if (settings.value.adaptToOtherPageStyles && isHomePage()) {
 window.addEventListener(BEWLY_MOUNTED, () => {
   if (beforeLoadedStyleEl)
     document.documentElement.removeChild(beforeLoadedStyleEl)
+  // app 已挂载(Bewly 顶栏已渲染)后才放开原生顶栏,避免"原生顶栏先闪一下/页面顶部空一片"
+  releaseRemoveOriginalTopBar()
 })
 
 // Set the original Bilibili top bar to `display: none` to prevent it from showing before the load
 // see: https://github.com/BewlyBewly/BewlyBewly/issues/967
+//
+// 撤除时机很关键:此前在 DOMContentLoaded 就移除,而非首页的 app 是 `injectAppWhenIdle()`
+// 延迟注入的,于是"原生顶栏已放出来、Bewly 顶栏还没挂载"之间会出现一个空窗期 ——
+// 用户看到的正是"打开视频页一瞬间顶栏没被美化,过一会才出现"。现已改为等 app 真正挂载
+// (BEWLY_MOUNTED,与首页 beforeLoadedStyleEl 用同一个信号)后再撤除。
+// iframe 内不显示 Bewly 顶栏,仍按原逻辑在 DOMContentLoaded 撤除,否则会把 iframe 的原生顶栏永久藏掉。
 const removeOriginalTopBar = injectCSS(`.bili-header, #biliMainHeader { visibility: hidden !important; }`)
+let removeOriginalTopBarReleased = false
+function releaseRemoveOriginalTopBar() {
+  if (removeOriginalTopBarReleased || !removeOriginalTopBar)
+    return
+  removeOriginalTopBarReleased = true
+  removeOriginalTopBar.remove()
+}
 
 async function onDOMLoaded() {
   let originalTopBar: HTMLElement | null = null
@@ -207,9 +222,16 @@ async function onDOMLoaded() {
     }
   }
 
-  // Reset the original Bilibili top bar display style
-  if (removeOriginalTopBar)
-    document.documentElement.removeChild(removeOriginalTopBar)
+  // Reset the original Bilibili top bar display style.
+  // 非 iframe 页面改为等 app 挂载(BEWLY_MOUNTED)后再撤除,见 releaseRemoveOriginalTopBar 上方的说明;
+  // iframe 内没有 Bewly 顶栏,立即撤除以免原生顶栏被永久隐藏。
+  if (isInIframe()) {
+    releaseRemoveOriginalTopBar()
+  }
+  else {
+    // 安全兜底:若 app 因故没能挂载(脚本异常/被页面破坏),也不能让原生顶栏一直藏着。
+    setTimeout(releaseRemoveOriginalTopBar, 8000)
+  }
 }
 
 if (document.readyState !== 'loading')
@@ -217,13 +239,18 @@ if (document.readyState !== 'loading')
 else
   document.addEventListener('DOMContentLoaded', () => onDOMLoaded())
 
+// 非首页把 app 注入推迟到浏览器空闲,避免和页面自身首屏渲染抢主线程。
+// 但 requestIdleCallback 在忙碌页面上可能很久不回调,且不传 timeout 时没有兜底 ——
+// 顶栏的可见性就卡在这段时间里。给一个上限,保证最迟 1.5s 内 app 一定开始注入。
+const APP_INJECT_IDLE_TIMEOUT = 1500
+
 function injectAppWhenIdle() {
   return new Promise<void>((resolve) => {
     // Inject app when idle
     runWhenIdle(async () => {
       injectApp()
       resolve()
-    })
+    }, APP_INJECT_IDLE_TIMEOUT)
   })
 }
 
@@ -272,10 +299,18 @@ function injectApp() {
   container.style.opacity = '0'
   container.style.transition = 'opacity 0.5s'
   styleEl.onload = () => {
-    // To prevent abrupt style transitions caused by sudden style changes
-    setTimeout(() => {
+    // 样式表加载完就尽快淡入。原先固定再等 500ms 才置 opacity,叠加在"原生顶栏已隐藏"
+    // 之上会额外拉长顶部空白的时间(实测总空窗约 1.9s)。这里改成等字体就绪后尽快显示,
+    // 上限只保留一个很短的兜底,避免字体一直不 ready 时永远不显示。
+    let shown = false
+    const showContainer = () => {
+      if (shown)
+        return
+      shown = true
       container.style.opacity = '1'
-    }, 500)
+    }
+    setTimeout(showContainer, 120)
+    document.fonts?.ready.then(showContainer).catch(() => {})
   }
 
   // startShadowDOMStyleInjection()
